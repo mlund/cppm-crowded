@@ -1,0 +1,52 @@
+#!/usr/bin/env yason.py
+
+
+ # actually -8
+
+
+
+
+
+geometry: {type: cuboid, length: 103.7574079781725}
+mcloop: {macro: 10, micro: 20}
+temperature: 298.15
+random: {seed: fixed}
+
+atomlist:
+    - MP: {eps: 2.479, mw: 10000000, q: 0, sigma: 40} # mid-particle
+    - NP: {eps: 2.479, mw: 0.001, q: -1, sigma: 4.0}  # negative particle
+    - PP: {eps: 2.479, mw: 0.001, q: 1, sigma: 4.0}   # positive particle
+    - UP: {eps: 2.479, mw: 0.001, q: 0, sigma: 4.0}   # uncharged particle
+    - Na: {dp: 4, eps: 2.479, mw: 0.001, q: 1, sigma: 4.0}
+    - Cl: {dp: 4, eps: 2.479, mw: 0.001, q: -1, sigma: 4.0}
+
+energy:
+    - nonbonded_coulombwca:
+        wca: {mixing: LB}
+        coulomb: {type: plain, epsr: 78.7}
+
+moleculelist:
+    - macroion: {insdir: [1,1,1], structure: sphere-P18.xyz, rigid: true}
+    - cation: {atomic: true, atoms: [Na], activity: 0.1}
+    - anion: {atomic: true, atoms: [Cl], activity: 0.1}
+
+insertmolecules:
+    - macroion: {N: 10}
+    - cation: {N: 180}
+    - anion: {N: 100}
+
+moves:
+    - moltransrot: {molecule: macroion, dp: 2, dprot: 0.4}
+    - transrot: {molecule: cation}
+    - transrot: {molecule: anion}
+    # rcmc: {repeat: 100}
+    
+reactionlist:
+    - "= cation + anion" : {}
+
+analysis:
+    - sanity: {nstep: 100}
+    - savestate: {file: confout.pqr}
+    - savestate: {file: state.json}
+    - qrfile: {nstep: 1}
+    - xtcfile: {file: traj.xtc, nstep: 1}
