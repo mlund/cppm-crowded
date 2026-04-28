@@ -1,0 +1,119 @@
+# Crowded macroion suspension at fixed volume fraction with explicit 1:1
+# salt and grand-canonical Na+/Cl- pair insertion.
+# Converted from a C++ Faunus template.yml.
+
+{% set volume_fraction = 0.3 %}
+{% set abs_macroion_charge = 8 %} # actually -8
+{% set n_macroions = 10 %}
+{% set kappa = kappa | default(0.0) %}  # inverse Debye screening length, 1/Å (0 = no salt)
+{% set pi = 3.141592653589793 %}
+{% set macroion_volume = 4.0 * pi / 3.0 * 20.0**3 %}
+{% set box_length = (n_macroions * macroion_volume / volume_fraction)**(1/3) %}
+{% set n_cation = 100 + n_macroions * abs_macroion_charge %}
+{% set n_anion = 100 %}
+
+atoms:
+  - {name: MP, mass: 1.0e7,  charge:  0.0, sigma: 40.0, epsilon: 2.479}  # macroion mid-particle
+  - {name: NP, mass: 1.0e-3, charge: -1.0, sigma:  4.0, epsilon: 2.479}  # negative particle
+  - {name: PP, mass: 1.0e-3, charge:  1.0, sigma:  4.0, epsilon: 2.479}  # positive particle
+  - {name: UP, mass: 1.0e-3, charge:  0.0, sigma:  4.0, epsilon: 2.479}  # uncharged particle
+  - {name: Na, mass: 1.0e-3, charge:  1.0, sigma:  4.0, epsilon: 2.479}
+  - {name: Cl, mass: 1.0e-3, charge: -1.0, sigma:  4.0, epsilon: 2.479}
+
+molecules:
+  - name: macroion
+    degrees_of_freedom: Rigid
+    has_com: true
+    from_structure: "{{ structure }}"
+  - name: cation
+    atoms: [Na]
+    activity: 0.1
+  - name: anion
+    atoms: [Cl]
+    activity: 0.1
+
+system:
+  cell: !Cuboid [{{ box_length }}, {{ box_length }}, {{ box_length }}]
+  medium:
+    permittivity: !Fixed 78.7
+    temperature: 298.15
+
+  blocks:
+    - molecule: macroion
+      N: {{ n_macroions }}
+      insert: !RandomCOM {rotate: true}
+    - molecule: cation
+      N: {{ 4 * n_cation }}
+      active: {{ n_cation }}
+      insert: !RandomAtomPos {}
+    - molecule: anion
+      N: {{ 4 * n_anion }}
+      active: {{ n_anion }}
+      insert: !RandomAtomPos {}
+
+  energy:
+    nonbonded:
+      default:
+        - !Coulomb {cutoff: {{ box_length / 2 }}{% if kappa > 0 %}, debye: {{ 1.0 / kappa }}{% endif %}}
+        - !WeeksChandlerAndersen {mixing: LB}
+    spline:
+      cutoff: {{ box_length / 2 }}
+      bounding_spheres: true
+
+analysis:
+  - !Energy
+    file: energy.dat
+    frequency: !Every 100
+  - !RadialDistribution
+    selections: ["molecule macroion", "molecule macroion"]
+    use_com: true
+    file: rdf.dat
+    dr: 0.5
+    frequency: !Every 1
+  - !RadialDistribution
+    selections: ["atomtype Na", "atomtype Cl"]
+    file: rdf-nacl.dat
+    dr: 0.1
+    frequency: !Every 10
+  - !Multipole
+    selection: "molecule macroion"
+    frequency: !Every 100
+  - !CollectiveVariable
+    property: count
+    selection: "atomtype Na"
+    frequency: !Every 100
+  - !CollectiveVariable
+    property: count
+    selection: "atomtype Cl"
+    frequency: !Every 100
+  - !Trajectory
+    file: traj.xtc
+    frequency: !Every 100
+  - !Trajectory
+    file: confout.xyz
+    frequency: End
+  - !VirtualVolumeMove
+    dV: 0.1
+    method: Isotropic
+    frequency: !Every 10
+
+propagate:
+  seed: !Fixed 42
+  criterion: Metropolis
+  repeat: {{ 10 * micro_steps }}
+  collections:
+    - !Stochastic
+      moves:
+        - !TranslateMolecule {molecule: macroion, dp: 5.0}
+        - !RotateMolecule    {molecule: macroion, dp: 2.0}
+        - !TranslateAtom     {molecule: cation, atom: Na, dp: 20.0}
+        - !TranslateAtom     {molecule: anion,  atom: Cl, dp: 20.0}
+    - !Deterministic
+      moves:
+        - !SpeciationMove
+          temperature: 298.15
+          repeat: 100
+          reactions:
+            # Grand-canonical NaCl pair insertion; molecular activities
+            # (0.1 M on cation/anion) are folded in automatically, so dG = 0.
+            - ["= cation + anion", !dG 0.0]
