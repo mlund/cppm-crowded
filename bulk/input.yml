@@ -1,51 +1,82 @@
-#!/usr/bin/env yason.py
+# Bulk 1:1 electrolyte (~0.3 M NaCl) with grand-canonical Na+/Cl- pair
+# insertion via reaction ensemble. Converted from C++ Faunus input.yml.
+#
+# The macroion atom/molecule definitions are carried over from the original
+# but not placed (the original `insertmolecules` block had no macroion entry).
 
+atoms:
+  - {name: Na, mass: 22, charge:  1.0, sigma:  4.0, epsilon: 2.479}
+  - {name: Cl, mass: 35, charge: -1.0, sigma:  4.0, epsilon: 2.479}
 
- # actually -8
+molecules:
+  - name: Cations
+    atoms: [Na]
+    atomic: true
+    activity: 0.1
+  - name: Anions
+    atoms: [Cl]
+    atomic: true
+    activity: 0.1
 
+system:
+  cell: !Cuboid [103.7574079781725, 103.7574079781725, 103.7574079781725]
+  medium:
+    permittivity: !Water
+    temperature: 298.15
 
+  blocks:
+    - molecule: Cations
+      N: 800
+      active: 200
+      insert: !RandomAtomPos {}
+    - molecule: Anions
+      N: 800
+      active: 200
+      insert: !RandomAtomPos {}
 
-
-
-geometry: {type: cuboid, length: 103.7574079781725}
-mcloop: {macro: 10, micro: 10000}
-temperature: 298.15
-random: {seed: fixed}
-
-atomlist:
-    - MP: {eps: 2.479, mw: 10000000, q: 0, sigma: 40} # mid-particle
-    - NP: {eps: 2.479, mw: 0.001, q: -1, sigma: 4.0}  # negative particle
-    - PP: {eps: 2.479, mw: 0.001, q: 1, sigma: 4.0}   # positive particle
-    - UP: {eps: 2.479, mw: 0.001, q: 0, sigma: 4.0}   # uncharged particle
-    - Na: {dp: 20, eps: 2.479, mw: 0.001, q: 1, sigma: 4.0}
-    - Cl: {dp: 20, eps: 2.479, mw: 0.001, q: -1, sigma: 4.0}
-
-energy:
-    - nonbonded_coulombwca:
-        wca: {mixing: LB}
-        coulomb: {type: plain, epsr: 78.7}
-
-moleculelist:
-    - macroion: {insdir: [1,1,1], structure: ../P00.xyz, rigid: true}
-    - cation: {atomic: true, atoms: [Na], activity: 0.1}
-    - anion: {atomic: true, atoms: [Cl], activity: 0.1}
-
-insertmolecules:
-    - cation: {N: 200}
-    - anion: {N: 200}
-
-moves:
-    - transrot: {molecule: cation}
-    - transrot: {molecule: anion}
-    - rcmc: {repeat: 100}
-    
-reactionlist:
-    - "= cation + anion" : {}
+  energy:
+    nonbonded:
+      default:
+        - !Coulomb {cutoff: 1000}
+        - !WeeksChandlerAndersen {mixing: LB}
 
 analysis:
-    - systemenergy: {nstep: 100, file: energy.dat}
-    - sanity: {nstep: 1000}
-    - atom_density: {nstep: 100}
-    - savestate: {file: confout.pqr}
-    - savestate: {file: state.json}
-    - virtualvolume: {nstep: 10, dV: 0.1, file: pressure.dat.gz}
+  - !Energy
+    file: energy.csv.gz
+    frequency: !Every 100
+  - !RadialDistribution
+    selections: ["atomtype Na", "atomtype Cl"]
+    file: rdf-nacl.csv
+    dr: 0.1
+    frequency: !Every 10
+  - !CollectiveVariable
+    property: molarity
+    selection: "atomtype Na"
+    frequency: !Every 10
+  - !CollectiveVariable
+    property: molarity
+    selection: "atomtype Cl"
+    frequency: !Every 10
+  - !VirtualVolumeMove
+    dV: 0.1
+    method: Isotropic
+    frequency: !Every 10
+
+propagate:
+  seed: !Fixed 42
+  criterion: Metropolis
+  repeat: 100
+  collections:
+    - !Stochastic
+      moves:
+        - !TranslateAtom {molecule: Cations, atom: Na, dp: 20.0}
+        - !TranslateAtom {molecule: Anions,  atom: Cl, dp: 20.0}
+    - !Deterministic
+      moves:
+        - !SpeciationMove
+          temperature: 298.15
+          repeat: 1000
+          reactions:
+            # Grand-canonical NaCl pair insertion; molecular activities
+            # (0.1 M on Cations/Anions) are folded in automatically, so dG = 0.
+            - ["= Cations + Anions", !dG 0.0]
