@@ -1,16 +1,20 @@
 # Crowded macroion suspension at fixed volume fraction with explicit 1:1
 # salt and grand-canonical Na+/Cl- pair insertion.
-# Converted from a C++ Faunus template.yml.
+# Important: when running for the first time, use a large displacement parameter for
+#            the macroions so that they can escape interlocked configs. That's also the
+#            why we start with almost no microions (leave space) and pull in via GCMC.
 
 {% set volume_fraction = 0.3 %}
 {% set abs_macroion_charge = 8 %} # actually -8
 {% set n_macroions = 10 %}
 {% set kappa = kappa | default(0.0) %}  # inverse Debye screening length, 1/Å (0 = no salt)
+{% set micro_steps = micro_steps | default(100) %}
+{% set structure = structure | default("P00.xyz") %}
 {% set pi = 3.141592653589793 %}
 {% set macroion_volume = 4.0 * pi / 3.0 * 20.0**3 %}
 {% set box_length = (n_macroions * macroion_volume / volume_fraction)**(1/3) %}
-{% set n_cation = 100 + n_macroions * abs_macroion_charge %}
-{% set n_anion = 100 %}
+{% set n_Cations = 2 + n_macroions * abs_macroion_charge %}
+{% set n_Anions = 2 %}
 
 atoms:
   - {name: MP, mass: 1.0e7,  charge:  0.0, sigma: 40.0, epsilon: 2.479}  # macroion mid-particle
@@ -25,65 +29,64 @@ molecules:
     degrees_of_freedom: Rigid
     has_com: true
     from_structure: "{{ structure }}"
-  - name: cation
+  - name: Cations
     atoms: [Na]
     activity: 0.1
-  - name: anion
+    atomic: true
+  - name: Anions
     atoms: [Cl]
     activity: 0.1
+    atomic: true
 
 system:
   cell: !Cuboid [{{ box_length }}, {{ box_length }}, {{ box_length }}]
   medium:
-    permittivity: !Fixed 78.7
+    permittivity: !Water
     temperature: 298.15
 
   blocks:
     - molecule: macroion
       N: {{ n_macroions }}
-      insert: !RandomCOM {rotate: true}
-    - molecule: cation
-      N: {{ 4 * n_cation }}
-      active: {{ n_cation }}
+      insert: !GridCOM {rotate: true}
+    - molecule: Cations
+      N: {{ 100 * n_Cations }}
+      active: {{ n_Cations }}
       insert: !RandomAtomPos {}
-    - molecule: anion
-      N: {{ 4 * n_anion }}
-      active: {{ n_anion }}
+    - molecule: Anions
+      N: {{ 100 * n_Anions }}
+      active: {{ n_Anions }}
       insert: !RandomAtomPos {}
 
   energy:
     nonbonded:
       default:
-        - !Coulomb {cutoff: {{ box_length / 2 }}{% if kappa > 0 %}, debye: {{ 1.0 / kappa }}{% endif %}}
+        - !Coulomb {cutoff: 1000 {% if kappa > 0 %}, debye: {{ 1.0 / kappa }}{% endif %}}
         - !WeeksChandlerAndersen {mixing: LB}
-    spline:
-      cutoff: {{ box_length / 2 }}
-      bounding_spheres: true
 
 analysis:
   - !Energy
-    file: energy.dat
+    file: energy.csv.gz
     frequency: !Every 100
   - !RadialDistribution
     selections: ["molecule macroion", "molecule macroion"]
     use_com: true
-    file: rdf.dat
+    file: rdf.csv
     dr: 0.5
     frequency: !Every 1
   - !RadialDistribution
     selections: ["atomtype Na", "atomtype Cl"]
-    file: rdf-nacl.dat
+    file: rdf-nacl.csv
     dr: 0.1
     frequency: !Every 10
   - !Multipole
     selection: "molecule macroion"
     frequency: !Every 100
   - !CollectiveVariable
-    property: count
+    property: molarity
     selection: "atomtype Na"
     frequency: !Every 100
   - !CollectiveVariable
-    property: count
+    property: molarity
     selection: "atomtype Cl"
     frequency: !Every 100
   - !Trajectory
@@ -104,16 +107,39 @@ propagate:
   collections:
     - !Stochastic
       moves:
-        - !TranslateMolecule {molecule: macroion, dp: 5.0}
-        - !RotateMolecule    {molecule: macroion, dp: 2.0}
-        - !TranslateAtom     {molecule: cation, atom: Na, dp: 20.0}
-        - !TranslateAtom     {molecule: anion,  atom: Cl, dp: 20.0}
+        - !TranslateMolecule {molecule: macroion, dp: 20.0, repeat: {{ n_macroions }}}
+        - !RotateMolecule    {molecule: macroion, dp: 1.0, repeat: {{ n_macroions }}}
+    - !Deterministic
+      # Preferential sampling: pick ions near a macroion's bounding
+      # sphere with weight W(r) = (r + offset)^{-exponent}. Detailed
+      # balance is preserved via the ln(W_new/W_old) acceptance term.
+      # PreferentialSampling needs a !Deterministic block so that the
+      # macroion (reference) has already moved this step.
+      moves:
+        - !TranslateAtom
+          molecule: Cations
+          atom: Na
+          dp: 20.0
+          repeat: {{ n_Cations }}
+          preferential:
+            reference: "molecule macroion"
+            exponent: 2.0
+            offset: 5.0
+        - !TranslateAtom
+          molecule: Anions
+          atom: Cl
+          dp: 20.0
+          repeat: {{ n_Anions }}
+          preferential:
+            reference: "molecule macroion"
+            exponent: 2.0
+            offset: 5.0
     - !Deterministic
       moves:
         - !SpeciationMove
           temperature: 298.15
-          repeat: 100
+          repeat: 10
           reactions:
             # Grand-canonical NaCl pair insertion; molecular activities
-            # (0.1 M on cation/anion) are folded in automatically, so dG = 0.
-            - ["= cation + anion", !dG 0.0]
+            # (0.1 M on Cations/Anions) are folded in automatically, so dG = 0.
+            - ["= Cations + Anions", !dG 0.0]
