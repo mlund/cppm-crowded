@@ -1,58 +1,145 @@
-#!/usr/bin/env yason.py
+# Crowded macroion suspension at fixed volume fraction with explicit 1:1
+# salt and grand-canonical Na+/Cl- pair insertion.
+# Important: when running for the first time, use a large displacement parameter for
+#            the macroions so that they can escape interlocked configs. That's also the
+#            why we start with almost no microions (leave space) and pull in via GCMC.
 
 
  # actually -8
 
+  # inverse Debye screening length, 1/Å (0 = no salt)
 
 
 
 
-geometry: {type: cuboid, length: 103.7574079781725}
-mcloop: {macro: 10, micro: 10000}
-temperature: 298.15
-random: {seed: fixed}
 
-atomlist:
-    - MP: {eps: 2.479, mw: 10000000, q: 0, sigma: 40} # mid-particle
-    - NP: {eps: 2.479, mw: 0.001, q: -1, sigma: 4.0}  # negative particle
-    - PP: {eps: 2.479, mw: 0.001, q: 1, sigma: 4.0}   # positive particle
-    - UP: {eps: 2.479, mw: 0.001, q: 0, sigma: 4.0}   # uncharged particle
-    - Na: {dp: 20, eps: 2.479, mw: 0.001, q: 1, sigma: 4.0}
-    - Cl: {dp: 20, eps: 2.479, mw: 0.001, q: -1, sigma: 4.0}
 
-energy:
-    - nonbonded_coulombwca:
-        wca: {mixing: LB}
-        coulomb: {type: plain, epsr: 78.7}
 
-moleculelist:
-    - macroion: {insdir: [1,1,1], structure: ../P00.xyz, rigid: true}
-    - cation: {atomic: true, atoms: [Na], activity: 0.1}
-    - anion: {atomic: true, atoms: [Cl], activity: 0.1}
 
-insertmolecules:
-    - macroion: {N: 10}
-    - cation: {N: 180}
-    - anion: {N: 100}
+atoms:
+  - {name: MP, mass: 1.0e7,  charge:  0.0, sigma: 40.0, epsilon: 2.479}  # macroion mid-particle
+  - {name: NP, mass: 1.0e-3, charge: -1.0, sigma:  4.0, epsilon: 2.479}  # negative particle
+  - {name: PP, mass: 1.0e-3, charge:  1.0, sigma:  4.0, epsilon: 2.479}  # positive particle
+  - {name: UP, mass: 1.0e-3, charge:  0.0, sigma:  4.0, epsilon: 2.479}  # uncharged particle
+  - {name: Na, mass: 1.0e-3, charge:  1.0, sigma:  4.0, epsilon: 2.479}
+  - {name: Cl, mass: 1.0e-3, charge: -1.0, sigma:  4.0, epsilon: 2.479}
 
-moves:
-    - moltransrot: {molecule: macroion, dp: 5, dprot: 2}
-    - transrot: {molecule: cation}
-    - transrot: {molecule: anion}
-    - rcmc: {repeat: 100}
-    
-reactionlist:
-    - "= cation + anion" : {}
+molecules:
+  - name: macroion
+    degrees_of_freedom: Rigid
+    has_com: true
+    from_structure: "../P00.xyz"
+  - name: Cations
+    atoms: [Na]
+    activity: 0.1
+    atomic: true
+  - name: Anions
+    atoms: [Cl]
+    activity: 0.1
+    atomic: true
+
+system:
+  cell: !Cuboid [103.7574079781725, 103.7574079781725, 103.7574079781725]
+  medium:
+    permittivity: !Water
+    temperature: 298.15
+
+  blocks:
+    - molecule: macroion
+      N: 10
+      insert: !GridCOM {rotate: true}
+    - molecule: Cations
+      N: 8200
+      active: 82
+      insert: !RandomAtomPos {}
+    - molecule: Anions
+      N: 200
+      active: 2
+      insert: !RandomAtomPos {}
+
+  energy:
+    nonbonded:
+      default:
+        - !Coulomb {cutoff: 1000 }
+        - !WeeksChandlerAndersen {mixing: LB}
 
 analysis:
-    - systemenergy: {nstep: 100, file: energy.dat}
-    - sanity: {nstep: 1000}
-    - atom_density: {nstep: 100}
-    - molrdf: {nstep: 1, dim: 3, dr: 0.5, file: rdf.dat, name1: macroion, name2: macroion}
-    - atomrdf: {nstep: 10, dim: 3, dr: 0.1, file: rdf-nacl.dat, name1: Na, name2: Cl}
-    - savestate: {file: confout.pqr}
-    - savestate: {file: state.json}
-    - qrfile: {nstep: 100}
-    - xtcfile: {file: traj.xtc, nstep: 100}
-    - multipole: {nstep: 100}
-    - virtualvolume: {nstep: 10, dV: 0.1, file: pressure.dat.gz}
+  - !Energy
+    file: energy.csv.gz
+    frequency: !Every 100
+  - !RadialDistribution
+    selections: ["molecule macroion", "molecule macroion"]
+    use_com: true
+    file: rdf.csv
+    dr: 0.5
+    frequency: !Every 1
+  - !RadialDistribution
+    selections: ["atomtype Na", "atomtype Cl"]
+    file: rdf-nacl.csv
+    dr: 0.1
+    frequency: !Every 10
+  - !Multipole
+    selection: "molecule macroion"
+    frequency: !Every 100
+  - !CollectiveVariable
+    property: molarity
+    selection: "atomtype Na"
+    frequency: !Every 100
+  - !CollectiveVariable
+    property: molarity
+    selection: "atomtype Cl"
+    frequency: !Every 100
+  - !Trajectory
+    file: traj.xtc
+    frequency: !Every 100
+  - !Trajectory
+    file: confout.xyz
+    frequency: End
+  - !VirtualVolumeMove
+    dV: 0.1
+    method: Isotropic
+    frequency: !Every 10
+
+propagate:
+  seed: !Fixed 42
+  criterion: Metropolis
+  repeat: 5000
+  collections:
+    - !Stochastic
+      moves:
+        - !TranslateMolecule {molecule: macroion, dp: 4.0, repeat: 10}
+        - !RotateMolecule    {molecule: macroion, dp: 1.0, repeat: 10}
+    - !Deterministic
+      # Preferential sampling: pick ions near a macroion's bounding
+      # sphere with weight W(r) = (r + offset)^{-exponent}. Detailed
+      # balance is preserved via the ln(W_new/W_old) acceptance term.
+      # PreferentialSampling needs a !Deterministic block so that the
+      # macroion (reference) has already moved this step.
+      moves:
+        - !TranslateAtom
+          molecule: Cations
+          atom: Na
+          dp: 15.0
+          repeat: 82
+          preferential:
+            reference: "molecule macroion"
+            exponent: 2.0
+            offset: 5.0
+        - !TranslateAtom
+          molecule: Anions
+          atom: Cl
+          dp: 15.0
+          repeat: 2
+          preferential:
+            reference: "molecule macroion"
+            exponent: 2.0
+            offset: 5.0
+    - !Deterministic
+      moves:
+        - !SpeciationMove
+          temperature: 298.15
+          repeat: 20
+          reactions:
+            # Grand-canonical NaCl pair insertion; molecular activities
+            # (0.1 M on Cations/Anions) are folded in automatically, so dG = 0.
+            - ["= Cations + Anions", !dG 0.0]
