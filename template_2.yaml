@@ -1,0 +1,277 @@
+# Crowded macroion suspension at fixed volume fraction with explicit 1:1
+# salt and grand-canonical Na+/Cl- pair insertion.
+# Important: when running for the first time, use a large displacement parameter for
+#            the macroions so that they can escape interlocked configs. That's also the
+#            why we start with almost no microions (leave space) and pull in via GCMC.
+{% set system_type = system_type | default("isotropic") %}
+{% set volume_fraction = volume_fraction | default(0.3) %}
+{% set abs_macroion_charge = 8 %}
+{% set n_macroions = n_macroions | default(10) %}
+{% set kappa = kappa | default(0.0) %}
+{% set micro_steps = micro_steps | default(1000) %}
+{% set potential = potential | default("coulomb") %}
+{% set pi = 3.141592653589793 %}
+{% if system_type == "dipolar" %}
+{% set structure = "../P18.xyz" %}
+{% elif system_type == "neutral" %}
+{% set structure = "../Pneutral.xyz" %}
+{% else %}
+{% set structure = "../P00.xyz" %}
+{% endif %}
+{% set macroion_volume = 4.0 * pi / 3.0 * 20.0**3 %}
+{% set box_length = (n_macroions * macroion_volume / volume_fraction)**(1/3) %}
+{% set cutoff = cutoff | default(box_length / 2) %}
+{% if system_type == "neutral" %}
+{% set n_Cations = 2 %}
+{% else %}
+{% set n_Cations = 2 + n_macroions * abs_macroion_charge %}
+{% endif %}
+{% set n_Anions = 2 %}
+
+{% if system_type == "bulk" %}
+atoms:
+  - {name: Na, mass: 22,    charge:  1.0, sigma:  4.0, epsilon: 2.479}
+  - {name: Cl, mass: 35,    charge: -1.0, sigma:  4.0, epsilon: 2.479}
+
+molecules:
+  - name: Cations
+    atoms: [Na]
+    atomic: true
+    activity: 0.1
+  - name: Anions
+    atoms: [Cl]
+    atomic: true
+    activity: 0.1
+
+system:
+  cell: !Cuboid [{{ box_length }}, {{ box_length }}, {{ box_length }}]
+  medium:
+    permittivity: !Water
+    temperature: 298.15
+
+  blocks:
+    - molecule: Cations
+      N: 800
+      active: 200
+      insert: !RandomAtomPos {}
+    - molecule: Anions
+      N: 800
+      active: 200
+      insert: !RandomAtomPos {}
+
+  energy:
+    nonbonded:
+      default:
+{% if potential == "fanourgakis" %}
+        - !Fanourgakis {cutoff: {{ cutoff }}}
+{% else %}
+        - !Coulomb {cutoff: {{ cutoff }}{% if kappa > 0 %}, debye: {{ 1.0 / kappa }}{% endif %}}
+{% endif %}
+        - !WeeksChandlerAndersen {mixing: LB}
+
+analysis:
+  - !Energy
+    file: energy.csv.gz
+    frequency: !Every 100
+{% if not is_equilibration %}
+  - !RadialDistribution
+    selections: ["atomtype Na", "atomtype Cl"]
+    file: rdf-nacl.csv
+    dr: 0.1
+    frequency: !Every 10
+  - !CollectiveVariable
+    property: molarity
+    selection: "atomtype Na"
+    frequency: !Every 10
+  - !CollectiveVariable
+    property: molarity
+    selection: "atomtype Cl"
+    frequency: !Every 10
+  - !VirtualVolumeMove
+    dV: 0.1
+    method: Isotropic
+    frequency: !Every 2
+{% endif %}
+
+propagate:
+  seed: !Fixed 42
+  criterion: Metropolis
+  repeat: {{ 10 * micro_steps }}
+  collections:
+    - !Stochastic
+      moves:
+        - !TranslateAtom {molecule: Cations, atom: Na, dp: 20.0}
+        - !TranslateAtom {molecule: Anions,  atom: Cl, dp: 20.0}
+    - !Deterministic
+      moves:
+        - !SpeciationMove
+          temperature: 298.15
+          repeat: 1000
+          reactions:
+            - ["= Cations + Anions", !dG 0.0]
+
+{% else %}
+
+atoms:
+  - {name: MP, mass: 1.0e7,  charge:  0.0, sigma: 40.0, epsilon: 2.479}  # macroion mid-particle
+  - {name: NP, mass: 1.0e-3, charge: -1.0, sigma:  4.0, epsilon: 2.479}  # negative particle
+  - {name: PP, mass: 1.0e-3, charge:  1.0, sigma:  4.0, epsilon: 2.479}  # positive particle
+  - {name: UP, mass: 1.0e-3, charge:  0.0, sigma:  4.0, epsilon: 2.479}  # uncharged particle
+  - {name: Na, mass: 1.0e-3, charge:  1.0, sigma:  4.0, epsilon: 2.479}
+  - {name: Cl, mass: 1.0e-3, charge: -1.0, sigma:  4.0, epsilon: 2.479}
+
+molecules:
+  - name: macroion
+    degrees_of_freedom: Rigid
+    has_com: true
+    from_structure: "{{ structure }}"
+  - name: Cations
+    atoms: [Na]
+    activity: 0.1
+    atomic: true
+  - name: Anions
+    atoms: [Cl]
+    activity: 0.1
+    atomic: true
+
+system:
+  cell: !Cuboid [{{ box_length }}, {{ box_length }}, {{ box_length }}]
+  medium:
+    permittivity: !Water
+    temperature: 298.15
+
+  blocks:
+    - molecule: macroion
+      N: {{ n_macroions }}
+      insert: !GridCOM {rotate: true}
+    - molecule: Cations
+      N: {{ 100 * n_Cations }}
+      active: {{ n_Cations }}
+      insert: !RandomAtomPos {}
+    - molecule: Anions
+      N: {{ 100 * n_Anions }}
+      active: {{ n_Anions }}
+      insert: !RandomAtomPos {}
+
+  energy:
+    nonbonded:
+      default:
+{% if potential == "fanourgakis" %}
+        - !Fanourgakis {cutoff: {{ cutoff }}}
+{% else %}
+        - !Coulomb {cutoff: {{ cutoff }}{% if kappa > 0 %}, debye: {{ 1.0 / kappa }}{% endif %}}
+{% endif %}
+        - !WeeksChandlerAndersen {mixing: LB}
+
+analysis:
+  - !Energy
+    file: energy.csv.gz
+    frequency: !Every 10
+{% if not is_equilibration %}
+  - !RadialDistribution
+    selections: ["molecule macroion", "molecule macroion"]
+    use_com: true
+    file: rdf.csv
+    dr: 0.5
+    frequency: !Every 10
+  - !RadialDistribution
+    selections: ["atomtype Na", "atomtype NP"]
+    file: rdf-na-np.csv
+    dr: 0.2
+    frequency: !Every 10
+  - !RadialDistribution
+    selections: ["atomtype Cl", "atomtype PP"]
+    file: rdf-cl-pp.csv
+    dr: 0.2
+    frequency: !Every 10
+  - !RadialDistribution
+    selections: ["atomtype Cl", "molecule macroion"]
+    file: rdf-cl-mp.csv
+    dr: 0.2
+    frequency: !Every 10
+  - !RadialDistribution
+    selections: ["atomtype Na", "molecule macroion"]
+    file: rdf-na-mp.csv
+    dr: 0.2
+    frequency: !Every 10
+  - !RadialDistribution
+    selections: ["atomtype Na", "atomtype Cl"]
+    file: rdf-na-cl.csv
+    dr: 0.2
+    frequency: !Every 10
+  - !Multipole
+    selection: "molecule macroion"
+    frequency: !Every 10
+  - !CollectiveVariable
+    property: molarity
+    selection: "atomtype Na"
+    frequency: !Every 10
+  - !CollectiveVariable
+    property: count
+    selection: "atomtype Na"
+    frequency: !Every 10
+  - !CollectiveVariable
+    property: molarity
+    selection: "atomtype Cl"
+    frequency: !Every 10
+  - !CollectiveVariable
+    property: count
+    selection: "atomtype Cl"
+    frequency: !Every 10
+  - !Trajectory
+    file: traj.xtc
+    frequency: !Every 10
+  - !Trajectory
+    file: confout.xyz
+    frequency: End
+  - !VirtualVolumeMove
+    dV: 0.1
+    method: Isotropic
+    frequency: !Every 2
+{% endif %}
+
+propagate:
+  seed: !Fixed 42
+  criterion: Metropolis
+  repeat: {{ 10 * micro_steps }}
+  collections:
+    - !Stochastic
+      moves:
+        - !TranslateMolecule {molecule: macroion, dp: 10.0, repeat: {{ n_macroions }}}
+        - !RotateMolecule    {molecule: macroion, dp: 1.0,  repeat: {{ n_macroions }}}
+    - !Deterministic
+      # Preferential sampling: pick ions near a macroion's bounding
+      # sphere with weight W(r) = (r + offset)^{-exponent}. Detailed
+      # balance is preserved via the ln(W_new/W_old) acceptance term.
+      # PreferentialSampling needs a !Deterministic block so that the
+      # macroion (reference) has already moved this step.
+      moves:
+        - !TranslateAtom
+          molecule: Cations
+          atom: Na
+          dp: 10.0
+          repeat: {{ 4 * n_macroions }}
+          preferential:
+            reference: "molecule macroion"
+            exponent: 2.0
+            offset: 5.0
+        - !TranslateAtom
+          molecule: Anions
+          atom: Cl
+          dp: 10.0
+          repeat: {{ 4 * n_macroions }}
+          preferential:
+            reference: "molecule macroion"
+            exponent: 2.0
+            offset: 5.0
+    - !Deterministic
+      moves:
+        - !SpeciationMove
+          temperature: 298.15
+          repeat: 20
+          reactions:
+            # Grand-canonical NaCl pair insertion; molecular activities
+            # (0.1 M on Cations/Anions) are folded in automatically, so dG = 0.
+            - ["= Cations + Anions", !dG 0.0]
+
+{% endif %}
