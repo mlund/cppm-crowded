@@ -13,6 +13,8 @@
 {% set pi = 3.141592653589793 %}
 {% if system_type == "dipolar" %}
 {% set structure = "../P18.xyz" %}
+{% elif system_type == "tripolar" %}
+{% set structure = "../P28.xyz" %}
 {% elif system_type == "neutral" %}
 {% set structure = "../Pneutral.xyz" %}
 {% else %}
