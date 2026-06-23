@@ -5,11 +5,11 @@
 #SBATCH -A lu2026-2-71
 
 # Walltime HH:MM:SS
-#SBATCH -t 1:00:00
+#SBATCH -t 15:00:00
 
 # Job name and output files
 
-#SBATCH -J cppm_dipolar
+#SBATCH -J cppm_tripolar
 #SBATCH -o %x_%j.out
 #SBATCH -e %x_%j.err
 
@@ -71,7 +71,7 @@ module purge
 module add GCCcore/12.3.0 
 module add Python/3.11.3
 
-../../faunus-rs/target/release/faunus run -i input_equi.yml -s state.yaml
+time ../../faunus-rs/target/release/faunus run -i input.yml -s state.yaml
 
 #######################################
 # Log final job statistics
