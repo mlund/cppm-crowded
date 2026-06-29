@@ -119,14 +119,17 @@ atoms:
   - {name: NP, mass: 1.0e-3, charge: -1.0, sigma:  4.0, epsilon: 2.479}  # negative particle
   - {name: PP, mass: 1.0e-3, charge:  1.0, sigma:  4.0, epsilon: 2.479}  # positive particle
   - {name: UP, mass: 1.0e-3, charge:  0.0, sigma:  4.0, epsilon: 2.479}  # uncharged particle
+{% if kappa == 0 %}
   - {name: Na, mass: 1.0e-3, charge:  1.0, sigma:  4.0, epsilon: 2.479}
   - {name: Cl, mass: 1.0e-3, charge: -1.0, sigma:  4.0, epsilon: 2.479}
+{% endif %}
 
 molecules:
   - name: macroion
     degrees_of_freedom: Rigid
     has_com: true
     from_structure: "{{ structure }}"
+{% if kappa == 0 %}
   - name: Cations
     atoms: [Na]
     activity: 0.1
@@ -135,6 +138,7 @@ molecules:
     atoms: [Cl]
     activity: 0.1
     atomic: true
+{% endif %}
 
 system:
   cell: !Cuboid [{{ box_length }}, {{ box_length }}, {{ box_length }}]
@@ -146,6 +150,7 @@ system:
     - molecule: macroion
       N: {{ n_macroions }}
       insert: !GridCOM {rotate: true}
+{% if kappa == 0 %}
     - molecule: Cations
       N: {{ 100 * n_Cations }}
       active: {{ n_Cations }}
@@ -154,6 +159,7 @@ system:
       N: {{ 100 * n_Anions }}
       active: {{ n_Anions }}
       insert: !RandomAtomPos {}
+{% endif %}
 
   energy:
     nonbonded:
@@ -176,6 +182,7 @@ analysis:
     file: rdf.csv
     dr: 0.5
     frequency: !Every 10
+{% if kappa == 0 %}
   - !RadialDistribution
     selections: ["atomtype Na", "atomtype NP"]
     file: rdf-na-np.csv
@@ -187,12 +194,12 @@ analysis:
     dr: 0.2
     frequency: !Every 10
   - !RadialDistribution
-    selections: ["atomtype Cl", "molecule macroion"]
+    selections: ["atomtype Cl", "atomtype MP"]
     file: rdf-cl-mp.csv
     dr: 0.2
     frequency: !Every 10
   - !RadialDistribution
-    selections: ["atomtype Na", "molecule macroion"]
+    selections: ["atomtype Na", "atomtype MP"]
     file: rdf-na-mp.csv
     dr: 0.2
     frequency: !Every 10
@@ -201,9 +208,11 @@ analysis:
     file: rdf-na-cl.csv
     dr: 0.2
     frequency: !Every 10
+{% endif %}
   - !Multipole
     selection: "molecule macroion"
     frequency: !Every 10
+{% if kappa == 0 %}
   - !CollectiveVariable
     property: molarity
     selection: "atomtype Na"
@@ -220,6 +229,7 @@ analysis:
     property: count
     selection: "atomtype Cl"
     frequency: !Every 10
+{% endif %}
   - !Trajectory
     file: traj.xtc
     frequency: !Every 10
@@ -241,6 +251,7 @@ propagate:
       moves:
         - !TranslateMolecule {molecule: macroion, dp: 10.0, repeat: {{ n_macroions }}}
         - !RotateMolecule    {molecule: macroion, dp: 1.0,  repeat: {{ n_macroions }}}
+{% if kappa == 0 %}
     - !Deterministic
       # Preferential sampling: pick ions near a macroion's bounding
       # sphere with weight W(r) = (r + offset)^{-exponent}. Detailed
@@ -275,5 +286,6 @@ propagate:
             # Grand-canonical NaCl pair insertion; molecular activities
             # (0.1 M on Cations/Anions) are folded in automatically, so dG = 0.
             - ["= Cations + Anions", !dG 0.0]
+{% endif %}
 
 {% endif %}

@@ -115,8 +115,11 @@ def main():
         print(f"  n_macroions    : {args.n_macroions}")
         print(f"  volume_fraction: {args.volume_fraction}")
         print(f"  box_length     : {box_length:.4f} Å")
-        print(f"  n_Cations      : {n_cations}")
-        print(f"  n_Anions       : {n_anions}")
+        if args.kappa == 0:
+            print(f"  n_Cations      : {n_cations}")
+            print(f"  n_Anions       : {n_anions}")
+        else:
+            print(f"  ions           : implicit (Yukawa, κ = {args.kappa:.4f} Å⁻¹, λD = {1/args.kappa:.4f} Å)")
     print(f"  potential      : {args.potential}")
     print(f"  cutoff         : {cutoff:.4f} Å")
 
