@@ -20,7 +20,7 @@ def main():
         "--type",
         dest="system_type",
         default="isotropic",
-        choices=["isotropic", "dipolar","tripolar", "neutral", "bulk"],
+        choices=["isotropic", "dipolar","quadrupolar", "neutral", "bulk"],
         help="System type (default: isotropic)",
     )
     parser.add_argument(
