@@ -57,6 +57,10 @@ def main():
         "--template", default="template_2.yaml",
         help="Template file relative to project root (default: template_2.yaml)",
     )
+    parser.add_argument(
+        "--force", action="store_true",
+        help="Overwrite existing files without prompting (for batch/scripted use)",
+    )
     args = parser.parse_args()
 
     project_root = Path(__file__).parent
@@ -98,7 +102,7 @@ def main():
     ]
 
     for out_file, micro_steps, is_equilibration in files:
-        if out_file.exists():
+        if out_file.exists() and not args.force:
             answer = input(f"{out_file} already exists. Overwrite? [y/N] ").strip().lower()
             if answer != "y":
                 sys.exit("Aborted.")
