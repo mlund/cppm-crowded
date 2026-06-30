@@ -4,10 +4,10 @@
 #SBATCH -A lu2026-2-71
 
 # Walltime HH:MM:SS
-#SBATCH -t 149:59:59
+#SBATCH -t 08:00:00
 
 # Job name and output files
-#SBATCH -J cppm_sweep
+#SBATCH -J cppm_sweep_quadrupolar
 #SBATCH -o %x_%j.out
 #SBATCH -e %x_%j.err
 
@@ -65,11 +65,7 @@ module purge
 module add GCCcore/12.3.0
 module add Python/3.11.3
 
-source ~/duello_env/bin/activate
-
-"$SLURM_SUBMIT_DIR/run_sweep.sh" "$@"
-
-deactivate
+time "$SLURM_SUBMIT_DIR/run_sweep.sh" "$@"
 
 #######################################
 # Log final job statistics
