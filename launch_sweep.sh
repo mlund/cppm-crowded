@@ -24,6 +24,7 @@ EOF
 USER_KAPPAS=""
 KAPPA_MIN="" KAPPA_MAX="" KAPPA_N=""
 SYSTEMS="isotropic"
+REPLICAS=1
 
 _args=("$@")
 i=0
@@ -34,6 +35,8 @@ while [[ $i -lt ${#_args[@]} ]]; do
         --kappa-max) KAPPA_MAX="${_args[$((i+1))]}";   ((i+=2)) ;;
         --kappa-n)   KAPPA_N="${_args[$((i+1))]}";     ((i+=2)) ;;
         --systems)   SYSTEMS="${_args[$((i+1))]}";     ((i+=2)) ;;
+        --replicas)  REPLICAS="${_args[$((i+1))]}";    ((i+=2)) ;;
+        --traj)      ((i+=1)) ;;
         -h|--help)   usage; exit 0 ;;
         *)           ((i+=1)) ;;
     esac
@@ -53,9 +56,9 @@ else
 fi
 
 N_SYSTEMS=$(echo "$SYSTEMS" | tr ',' '\n' | wc -l)
-N=$(( N_KAPPA * N_SYSTEMS ))
+N=$(( N_KAPPA * N_SYSTEMS * REPLICAS ))
 
-echo "Submitting $N parallel simulation(s) (${N_SYSTEMS} system(s) x ${N_KAPPA} kappa point(s))"
+echo "Submitting $N parallel simulation(s) (${N_SYSTEMS} system(s) x ${N_KAPPA} kappa point(s) x ${REPLICAS} replica(s))"
 echo "  --cpus-per-task=$N"
 
 sbatch --cpus-per-task="$N" \

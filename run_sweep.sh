@@ -41,7 +41,10 @@ Simulation parameters (passed to generate_input.py):
   --phi <float>            Volume fraction (default: 0.3)
   --micro-steps <int>      Production micro-steps multiplier (default: 1000)
   --equil-micro-steps <int>  Equilibration micro-steps multiplier (default: 200)
-  --potential <str>        coulomb or fanourgakis (default: coulomb)
+  --potential <str>        coulomb or fanourgakis (default: fanourgakis)
+  --traj                   Save trajectory to traj.xtc during production (default: off)
+  --replicas <int>         Number of replicas per condition (default: 1, no suffix).
+                           First replica keeps the base name; subsequent ones get _2, _3, ...
 
   -h, --help
 
@@ -60,7 +63,9 @@ N_MACROIONS=10
 PHI=0.3
 MICRO_STEPS=1000
 EQUIL_MICRO_STEPS=200
-POTENTIAL="coulomb"
+POTENTIAL="fanourgakis"
+TRAJ=""
+REPLICAS=1
 USER_KAPPAS=""
 KAPPA_MIN="" KAPPA_MAX="" KAPPA_N=""
 
@@ -80,6 +85,8 @@ while [[ $# -gt 0 ]]; do
         --micro-steps)       MICRO_STEPS="$2";        shift 2 ;;
         --equil-micro-steps) EQUIL_MICRO_STEPS="$2";  shift 2 ;;
         --potential)         POTENTIAL="$2";          shift 2 ;;
+        --traj)              TRAJ="--traj";           shift 1 ;;
+        --replicas)          REPLICAS="$2";           shift 2 ;;
         -h|--help)           usage; exit 0 ;;
         *)                   echo "Unknown argument: $1" >&2; usage; exit 1 ;;
     esac
@@ -105,10 +112,11 @@ fi
 
 IFS=',' read -ra SYSTEM_VALS <<< "$SYSTEMS"
 
-TOTAL=$(( ${#SYSTEM_VALS[@]} * ${#KAPPA_VALS[@]} ))
-echo "Systems : ${SYSTEM_VALS[*]}"
-echo "Kappas  : ${KAPPA_VALS[*]}"
-echo "Total   : $TOTAL simulation(s)"
+TOTAL=$(( ${#SYSTEM_VALS[@]} * ${#KAPPA_VALS[@]} * REPLICAS ))
+echo "Systems  : ${SYSTEM_VALS[*]}"
+echo "Kappas   : ${KAPPA_VALS[*]}"
+echo "Replicas : $REPLICAS"
+echo "Total    : $TOTAL simulation(s)"
 echo
 
 #######################################
@@ -120,12 +128,13 @@ echo
 run_one() {
     local SYSTEM="$1"
     local KAPPA="$2"
+    local REPLICA="$3"   # empty string for the first (base) replica
     local KAPPA_FMT
     KAPPA_FMT=$(printf "%.4f" "$KAPPA")
-    local DIR_NAME="${SYSTEM}-imp_${KAPPA_FMT}"
+    local DIR_NAME="${SYSTEM}-imp_${KAPPA_FMT}${REPLICA}"
     local SIM_DIR="$PROJ_ROOT/$DIR_NAME"
 
-    echo "  [${SYSTEM} κ=${KAPPA_FMT}] Generating input files"
+    echo "  [${SYSTEM} κ=${KAPPA_FMT}${REPLICA}] Generating input files"
     python3 "$GENERATE" "$DIR_NAME" \
         --type "$SYSTEM" \
         --N "$N_MACROIONS" \
@@ -134,17 +143,18 @@ run_one() {
         --micro-steps "$MICRO_STEPS" \
         --equil-micro-steps "$EQUIL_MICRO_STEPS" \
         --potential "$POTENTIAL" \
+        ${TRAJ:+--traj} \
         --force
 
     cd "$SIM_DIR"
 
-    echo "  [${SYSTEM} κ=${KAPPA_FMT}] Equilibration"
+    echo "  [${SYSTEM} κ=${KAPPA_FMT}${REPLICA}] Equilibration"
     "$FAUNUS" run -i input_equi.yml -s state.yaml
 
-    echo "  [${SYSTEM} κ=${KAPPA_FMT}] Production (resuming from state.yaml)"
+    echo "  [${SYSTEM} κ=${KAPPA_FMT}${REPLICA}] Production (resuming from state.yaml)"
     "$FAUNUS" run -i input.yml -s state.yaml
 
-    echo "  [${SYSTEM} κ=${KAPPA_FMT}] Done"
+    echo "  [${SYSTEM} κ=${KAPPA_FMT}${REPLICA}] Done"
 }
 
 #######################################
@@ -154,8 +164,12 @@ run_one() {
 PIDS=()
 for SYSTEM in "${SYSTEM_VALS[@]}"; do
     for KAPPA in "${KAPPA_VALS[@]}"; do
-        ( run_one "$SYSTEM" "$KAPPA" ) &
-        PIDS+=($!)
+        for (( R=1; R<=REPLICAS; R++ )); do
+            SUFFIX=""
+            [[ $R -gt 1 ]] && SUFFIX="_${R}"
+            ( run_one "$SYSTEM" "$KAPPA" "$SUFFIX" ) &
+            PIDS+=($!)
+        done
     done
 done
 

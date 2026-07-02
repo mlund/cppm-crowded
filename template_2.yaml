@@ -230,14 +230,17 @@ analysis:
     selection: "atomtype Cl"
     frequency: !Every 10
 {% endif %}
+{% if save_traj %}
   - !Trajectory
     file: traj.xtc
     frequency: !Every 10
+{% endif %}
   - !Trajectory
     file: confout.xyz
     frequency: End
   - !VirtualVolumeMove
     dV: 0.1
+    block_size: 1000
     method: Isotropic
     frequency: !Every 1
 {% endif %}

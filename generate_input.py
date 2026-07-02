@@ -45,9 +45,9 @@ def main():
     )
     parser.add_argument(
         "--potential",
-        default="coulomb",
+        default="fanourgakis",
         choices=["coulomb", "fanourgakis"],
-        help="Electrostatic potential to use (default: coulomb)",
+        help="Electrostatic potential to use (default: fanourgakis)",
     )
     parser.add_argument(
         "--cutoff", type=float, default=None,
@@ -56,6 +56,10 @@ def main():
     parser.add_argument(
         "--template", default="template_2.yaml",
         help="Template file relative to project root (default: template_2.yaml)",
+    )
+    parser.add_argument(
+        "--traj", action="store_true", default=False,
+        help="Save trajectory to traj.xtc during production (default: off)",
     )
     parser.add_argument(
         "--force", action="store_true",
@@ -106,7 +110,7 @@ def main():
             answer = input(f"{out_file} already exists. Overwrite? [y/N] ").strip().lower()
             if answer != "y":
                 sys.exit("Aborted.")
-        rendered = template.render(**common, micro_steps=micro_steps, is_equilibration=is_equilibration)
+        rendered = template.render(**common, micro_steps=micro_steps, is_equilibration=is_equilibration, save_traj=args.traj)
         out_file.write_text(rendered)
 
     n_cations = 2 if args.system_type == "neutral" else 2 + args.n_macroions * 8
