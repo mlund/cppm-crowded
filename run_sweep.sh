@@ -43,6 +43,7 @@ Simulation parameters (passed to generate_input.py):
   --equil-micro-steps <int>  Equilibration micro-steps multiplier (default: 200)
   --potential <str>        coulomb or fanourgakis (default: fanourgakis)
   --traj                   Save trajectory to traj.xtc during production (default: off)
+  --sdf                    Save Spatial distribution function to sdf.dx during production (default: off)
   --replicas <int>         Number of replicas per condition (default: 1, no suffix).
                            First replica keeps the base name; subsequent ones get _2, _3, ...
 
@@ -65,6 +66,7 @@ MICRO_STEPS=1000
 EQUIL_MICRO_STEPS=200
 POTENTIAL="fanourgakis"
 TRAJ=""
+SDF=""
 REPLICAS=1
 USER_KAPPAS=""
 KAPPA_MIN="" KAPPA_MAX="" KAPPA_N=""
@@ -86,6 +88,7 @@ while [[ $# -gt 0 ]]; do
         --equil-micro-steps) EQUIL_MICRO_STEPS="$2";  shift 2 ;;
         --potential)         POTENTIAL="$2";          shift 2 ;;
         --traj)              TRAJ="--traj";           shift 1 ;;
+        --sdf)               SDF="--sdf";             shift 1 ;;
         --replicas)          REPLICAS="$2";           shift 2 ;;
         -h|--help)           usage; exit 0 ;;
         *)                   echo "Unknown argument: $1" >&2; usage; exit 1 ;;
@@ -144,6 +147,7 @@ run_one() {
         --equil-micro-steps "$EQUIL_MICRO_STEPS" \
         --potential "$POTENTIAL" \
         ${TRAJ:+--traj} \
+        ${SDF:+--sdf} \
         --force
 
     cd "$SIM_DIR"

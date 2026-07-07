@@ -62,6 +62,10 @@ def main():
         help="Save trajectory to traj.xtc during production (default: off)",
     )
     parser.add_argument(
+        "--sdf", action="store_true", default=False,
+        help="Save spatial distribution function to sdf.dx during production (default: off)",
+    )
+    parser.add_argument(
         "--force", action="store_true",
         help="Overwrite existing files without prompting (for batch/scripted use)",
     )
@@ -110,7 +114,7 @@ def main():
             answer = input(f"{out_file} already exists. Overwrite? [y/N] ").strip().lower()
             if answer != "y":
                 sys.exit("Aborted.")
-        rendered = template.render(**common, micro_steps=micro_steps, is_equilibration=is_equilibration, save_traj=args.traj)
+        rendered = template.render(**common, micro_steps=micro_steps, is_equilibration=is_equilibration, save_traj=args.traj, save_sdf=args.sdf)
         out_file.write_text(rendered)
 
     n_cations = 2 if args.system_type == "neutral" else 2 + args.n_macroions * 8

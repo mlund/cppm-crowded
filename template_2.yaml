@@ -9,7 +9,7 @@
 {% set n_macroions = n_macroions | default(10) %}
 {% set kappa = kappa | default(0.0) %}
 {% set micro_steps = micro_steps | default(1000) %}
-{% set potential = potential | default("coulomb") %}
+{% set potential = potential | default("fanourgakis") %}
 {% set pi = 3.141592653589793 %}
 {% if system_type == "dipolar" %}
 {% set structure = "../P18.xyz" %}
@@ -65,7 +65,7 @@ system:
     nonbonded:
       default:
 {% if potential == "fanourgakis" %}
-        - !Fanourgakis {cutoff: {{ cutoff }}}
+        - !Fanourgakis {cutoff: {{ cutoff }}{% if kappa > 0 %}, debye_length: {{ 1.0 / kappa }}{% endif %}}
 {% else %}
         - !Coulomb {cutoff: {{ cutoff }}{% if kappa > 0 %}, debye: {{ 1.0 / kappa }}{% endif %}}
 {% endif %}
@@ -165,7 +165,7 @@ system:
     nonbonded:
       default:
 {% if potential == "fanourgakis" %}
-        - !Fanourgakis {cutoff: {{ cutoff }}}
+        - !Fanourgakis {cutoff: {{ cutoff }}{% if kappa > 0 %}, debye_length: {{ 1.0 / kappa }}{% endif %}}
 {% else %}
         - !Coulomb {cutoff: {{ cutoff }}{% if kappa > 0 %}, debye: {{ 1.0 / kappa }}{% endif %}}
 {% endif %}
@@ -234,6 +234,40 @@ analysis:
   - !Trajectory
     file: traj.xtc
     frequency: !Every 10
+{% endif %}
+{% if save_sdf %}
+  - !SpatialDistribution
+    reference: "molecule macroion"
+    selection: "atomtype Na"
+    file: sdf-na.dx 
+    frequency: !Every 10
+    reference_file: "{{ structure }}"
+    resolution: 1.5
+    padding: 10.0
+  - !SpatialDistribution
+    reference: "molecule macroion"
+    selection: "atomtype Cl"
+    file: sdf-cl.dx 
+    frequency: !Every 10
+    reference_file: "{{ structure }}"
+    resolution: 1.5
+    padding: 10.0
+  - !SpatialDistribution
+    reference: "molecule macroion"
+    selection: "atomtype NP"
+    file: sdf-np.dx 
+    frequency: !Every 10
+    reference_file: "{{ structure }}"
+    resolution: 1.5
+    padding: 10.0
+  - !SpatialDistribution
+    reference: "molecule macroion"
+    selection: "atomtype PP"
+    file: sdf-pp.dx 
+    frequency: !Every 10
+    reference_file: "{{ structure }}"
+    resolution: 1.5
+    padding: 10.0
 {% endif %}
   - !Trajectory
     file: confout.xyz
