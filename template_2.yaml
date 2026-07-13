@@ -13,12 +13,16 @@
 {% set pi = 3.141592653589793 %}
 {% if system_type == "dipolar" %}
 {% set structure = "../P18.xyz" %}
+{% set ref_structure = "../ref_P18.xyz" %}
 {% elif system_type == "quadrupolar" %}
 {% set structure = "../P28.xyz" %}
+{% set ref_structure = "../ref_P28.xyz" %}
 {% elif system_type == "neutral" %}
 {% set structure = "../Pneutral.xyz" %}
+{% set ref_structure = "../ref_Pneutral.xyz" %}
 {% else %}
 {% set structure = "../P00.xyz" %}
+{% set ref_structure = "../ref_P00.xyz" %}
 {% endif %}
 {% set macroion_volume = 4.0 * pi / 3.0 * 20.0**3 %}
 {% set box_length = (n_macroions * macroion_volume / volume_fraction)**(1/3) %}
@@ -76,10 +80,13 @@ analysis:
     file: energy.csv.gz
     frequency: !Every 100
 {% if not is_equilibration %}
+  - !Multipole
+    selection: "molecule macroion"
+    frequency: !Every 10
   - !RadialDistribution
     selections: ["atomtype Na", "atomtype Cl"]
     file: rdf-nacl.csv
-    dr: 0.05
+    resolution: 0.05
     frequency: !Every 10
   - !CollectiveVariable
     property: molarity
@@ -180,37 +187,42 @@ analysis:
     selections: ["molecule macroion", "molecule macroion"]
     use_com: true
     file: rdf.csv
-    dr: 0.05
+    resolution: 0.05
     frequency: !Every 10
 {% if kappa == 0 %}
   - !RadialDistribution
     selections: ["atomtype Na", "atomtype NP"]
     file: rdf-na-np.csv
-    dr: 0.05
+    resolution: 0.05
     frequency: !Every 10
   - !RadialDistribution
     selections: ["atomtype Cl", "atomtype PP"]
     file: rdf-cl-pp.csv
-    dr: 0.05
+    resolution: 0.05
     frequency: !Every 10
   - !RadialDistribution
     selections: ["atomtype Cl", "atomtype MP"]
     file: rdf-cl-mp.csv
-    dr: 0.05
+    resolution: 0.05
     frequency: !Every 10
   - !RadialDistribution
     selections: ["atomtype Na", "atomtype MP"]
     file: rdf-na-mp.csv
-    dr: 0.05
+    resolution: 0.05
     frequency: !Every 10
   - !RadialDistribution
     selections: ["atomtype Na", "atomtype Cl"]
     file: rdf-na-cl.csv
-    dr: 0.05
+    resolution: 0.05
     frequency: !Every 10
 {% endif %}
   - !Multipole
     selection: "molecule macroion"
+    frequency: !Every 10
+  - !MultipoleDistribution
+    selections: ["molecule macroion", "molecule macroion"]
+    file: multipole_dist.csv
+    resolution: 0.05
     frequency: !Every 10
 {% if kappa == 0 %}
   - !CollectiveVariable
@@ -241,33 +253,33 @@ analysis:
     selection: "atomtype Na"
     file: sdf-na.dx 
     frequency: !Every 10
-    reference_file: "{{ structure }}"
+    reference_file: "{{ ref_structure }}"
     resolution: 1.5
-    padding: 10.0
+    padding: 12.0
   - !SpatialDistribution
     reference: "molecule macroion"
     selection: "atomtype Cl"
     file: sdf-cl.dx 
     frequency: !Every 10
-    reference_file: "{{ structure }}"
+    reference_file: "{{ ref_structure }}"
     resolution: 1.5
-    padding: 10.0
+    padding: 12.0
   - !SpatialDistribution
     reference: "molecule macroion"
     selection: "atomtype NP"
     file: sdf-np.dx 
     frequency: !Every 10
-    reference_file: "{{ structure }}"
+    reference_file: "{{ ref_structure }}"
     resolution: 1.5
-    padding: 10.0
+    padding: 12.0
   - !SpatialDistribution
     reference: "molecule macroion"
     selection: "atomtype PP"
     file: sdf-pp.dx 
     frequency: !Every 10
-    reference_file: "{{ structure }}"
+    reference_file: "{{ ref_structure }}"
     resolution: 1.5
-    padding: 10.0
+    padding: 12.0
 {% endif %}
   - !Trajectory
     file: confout.xyz
@@ -287,7 +299,7 @@ propagate:
     - !Stochastic
       moves:
         - !TranslateMolecule {molecule: macroion, dp: 10.0, repeat: {{ n_macroions }}}
-        - !RotateMolecule    {molecule: macroion, dp: 1.0,  repeat: {{ n_macroions }}}
+        - !RotateMolecule    {molecule: macroion, dprot: 1.0,  repeat: {{ n_macroions }}}
 {% if kappa == 0 %}
     - !Deterministic
       # Preferential sampling: pick ions near a macroion's bounding
