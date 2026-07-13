@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# run_sweep.sh — kappa sweep across system types with equil+production in same directory.
+# run_sweep.sh — kappa sweep (implicit ions) or explicit-ion run across system types.
 # Runs locally or inside a SLURM job (called by lunarc_sweep.sh).
+# When no kappa args are given, explicit-ion mode is assumed and dirs are named <system>-exp[_N].
 
 set -euo pipefail
 
@@ -28,9 +29,12 @@ usage() {
     cat <<EOF
 Usage: $0 [OPTIONS]
 
-Kappa sweep (pick one form):
+Kappa sweep — implicit ions (pick one form; omit both for explicit-ion mode):
   --kappas <v1,v2,...>                     Explicit list, e.g. 0.07,0.08,0.10
   --kappa-min <v> --kappa-max <v> --kappa-n <N>   Linspace of N points
+
+  If no kappa argument is provided the script runs in explicit-ion mode:
+  directories are named <system>-exp (first replica) and <system>-exp_2, _3, ...
 
 System types:
   --systems <s1,s2,...>    Comma-separated; choices: isotropic,dipolar,quadrupolar,neutral
@@ -52,6 +56,7 @@ Simulation parameters (passed to generate_input.py):
 Examples:
   $0 --kappas 0.070,0.080,0.0981 --systems isotropic,quadrupolar
   $0 --kappa-min 0.07 --kappa-max 0.12 --kappa-n 6 --systems isotropic
+  $0 --systems isotropic,dipolar --replicas 3          # explicit-ion mode
 EOF
 }
 
@@ -96,9 +101,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 #######################################
-# Build kappa array
+# Build kappa array (or set explicit-ion mode)
 #######################################
 
+EXPLICIT_MODE=false
 KAPPA_VALS=()
 if [[ -n "$USER_KAPPAS" ]]; then
     IFS=',' read -ra KAPPA_VALS <<< "$USER_KAPPAS"
@@ -109,15 +115,19 @@ for v in np.linspace($KAPPA_MIN, $KAPPA_MAX, $KAPPA_N):
     print(f'{v:.6g}')
 ")
 else
-    echo "ERROR: provide --kappas or --kappa-min/--kappa-max/--kappa-n" >&2
-    usage; exit 1
+    EXPLICIT_MODE=true
+    KAPPA_VALS=("explicit")   # sentinel — loop runs once
 fi
 
 IFS=',' read -ra SYSTEM_VALS <<< "$SYSTEMS"
 
 TOTAL=$(( ${#SYSTEM_VALS[@]} * ${#KAPPA_VALS[@]} * REPLICAS ))
 echo "Systems  : ${SYSTEM_VALS[*]}"
-echo "Kappas   : ${KAPPA_VALS[*]}"
+if [[ "$EXPLICIT_MODE" == "true" ]]; then
+    echo "Mode     : explicit ions (no kappa)"
+else
+    echo "Kappas   : ${KAPPA_VALS[*]}"
+fi
 echo "Replicas : $REPLICAS"
 echo "Total    : $TOTAL simulation(s)"
 echo
@@ -132,17 +142,29 @@ run_one() {
     local SYSTEM="$1"
     local KAPPA="$2"
     local REPLICA="$3"   # empty string for the first (base) replica
-    local KAPPA_FMT
-    KAPPA_FMT=$(printf "%.4f" "$KAPPA")
-    local DIR_NAME="${SYSTEM}-imp_${KAPPA_FMT}${REPLICA}"
+
+    local DIR_NAME LOG_TAG
+    local KAPPA_ARGS=()
+
+    if [[ "$EXPLICIT_MODE" == "true" ]]; then
+        DIR_NAME="${SYSTEM}-exp${REPLICA}"
+        LOG_TAG="${SYSTEM} exp${REPLICA}"
+    else
+        local KAPPA_FMT
+        KAPPA_FMT=$(printf "%.4f" "$KAPPA")
+        DIR_NAME="${SYSTEM}-imp_${KAPPA_FMT}${REPLICA}"
+        LOG_TAG="${SYSTEM} κ=${KAPPA_FMT}${REPLICA}"
+        KAPPA_ARGS=(--kappa "$KAPPA")
+    fi
+
     local SIM_DIR="$PROJ_ROOT/$DIR_NAME"
 
-    echo "  [${SYSTEM} κ=${KAPPA_FMT}${REPLICA}] Generating input files"
+    echo "  [${LOG_TAG}] Generating input files"
     python3 "$GENERATE" "$DIR_NAME" \
         --type "$SYSTEM" \
         --N "$N_MACROIONS" \
         --phi "$PHI" \
-        --kappa "$KAPPA" \
+        "${KAPPA_ARGS[@]}" \
         --micro-steps "$MICRO_STEPS" \
         --equil-micro-steps "$EQUIL_MICRO_STEPS" \
         --potential "$POTENTIAL" \
@@ -152,13 +174,13 @@ run_one() {
 
     cd "$SIM_DIR"
 
-    echo "  [${SYSTEM} κ=${KAPPA_FMT}${REPLICA}] Equilibration"
+    echo "  [${LOG_TAG}] Equilibration"
     "$FAUNUS" run -i input_equi.yml -s state.yaml
 
-    echo "  [${SYSTEM} κ=${KAPPA_FMT}${REPLICA}] Production (resuming from state.yaml)"
+    echo "  [${LOG_TAG}] Production (resuming from state.yaml)"
     "$FAUNUS" run -i input.yml -s state.yaml
 
-    echo "  [${SYSTEM} κ=${KAPPA_FMT}${REPLICA}] Done"
+    echo "  [${LOG_TAG}] Done"
 }
 
 #######################################
