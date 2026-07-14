@@ -250,22 +250,6 @@ analysis:
 {% if save_sdf %}
   - !SpatialDistribution
     reference: "molecule macroion"
-    selection: "atomtype Na"
-    file: sdf-na.dx 
-    frequency: !Every 10
-    reference_file: "{{ ref_structure }}"
-    resolution: 1.5
-    padding: 12.0
-  - !SpatialDistribution
-    reference: "molecule macroion"
-    selection: "atomtype Cl"
-    file: sdf-cl.dx 
-    frequency: !Every 10
-    reference_file: "{{ ref_structure }}"
-    resolution: 1.5
-    padding: 12.0
-  - !SpatialDistribution
-    reference: "molecule macroion"
     selection: "atomtype NP"
     file: sdf-np.dx 
     frequency: !Every 10
@@ -280,6 +264,24 @@ analysis:
     reference_file: "{{ ref_structure }}"
     resolution: 1.5
     padding: 12.0
+{% if kappa == 0 %}
+  - !SpatialDistribution
+    reference: "molecule macroion"
+    selection: "atomtype Na"
+    file: sdf-na.dx 
+    frequency: !Every 10
+    reference_file: "{{ ref_structure }}"
+    resolution: 1.5
+    padding: 12.0
+  - !SpatialDistribution
+    reference: "molecule macroion"
+    selection: "atomtype Cl"
+    file: sdf-cl.dx 
+    frequency: !Every 10
+    reference_file: "{{ ref_structure }}"
+    resolution: 1.5
+    padding: 12.0
+{% endif %}
 {% endif %}
   - !Trajectory
     file: confout.xyz
