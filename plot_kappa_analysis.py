@@ -60,11 +60,11 @@ def parse_folders():
         if doc is None:
             continue
 
-        # Walk all nested dicts/lists to find 'Pex (mM)'
+        # Walk all nested dicts/lists to find 'Pex/mM'
         def find_pex(node):
             if isinstance(node, dict):
                 for k, v in node.items():
-                    if k == 'Pex (mM)' and isinstance(v, dict):
+                    if k == 'Pex/mM' and isinstance(v, dict):
                         return v.get('mean'), v.get('error')
                     result = find_pex(v)
                     if result is not None:
@@ -78,7 +78,7 @@ def parse_folders():
 
         pex = find_pex(doc)
         if pex is None:
-            print(f"  Warning: no Pex (mM) found in {folder.name}")
+            print(f"  Warning: no Pex/mM found in {folder.name}")
             continue
         raw[sys_type][kappa].append((pex[0], pex[1]))
 
