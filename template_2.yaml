@@ -255,7 +255,7 @@ analysis:
     frequency: !Every 10
     reference_file: "{{ ref_structure }}"
     resolution: 1.5
-    padding: 12.0
+    padding: 8.0
   - !SpatialDistribution
     reference: "molecule macroion"
     selection: "atomtype PP"
@@ -263,7 +263,7 @@ analysis:
     frequency: !Every 10
     reference_file: "{{ ref_structure }}"
     resolution: 1.5
-    padding: 12.0
+    padding: 8.0
 {% if kappa == 0 %}
   - !SpatialDistribution
     reference: "molecule macroion"
@@ -272,7 +272,7 @@ analysis:
     frequency: !Every 10
     reference_file: "{{ ref_structure }}"
     resolution: 1.5
-    padding: 12.0
+    padding: 8.0
   - !SpatialDistribution
     reference: "molecule macroion"
     selection: "atomtype Cl"
@@ -280,7 +280,7 @@ analysis:
     frequency: !Every 10
     reference_file: "{{ ref_structure }}"
     resolution: 1.5
-    padding: 12.0
+    padding: 8.0
 {% endif %}
 {% endif %}
   - !Trajectory
