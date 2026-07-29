@@ -66,7 +66,7 @@ system:
       insert: !RandomAtomPos {}
 
   energy:
-    nonbonded:
+    - !Nonbonded
       default:
 {% if potential == "fanourgakis" %}
         - !Fanourgakis {cutoff: {{ cutoff }}{% if kappa > 0 %}, debye_length: {{ 1.0 / kappa }}{% endif %}}
@@ -103,9 +103,9 @@ analysis:
 {% endif %}
 
 propagate:
-  seed: !Fixed 42
+  seed: !Hardware
   criterion: Metropolis
-  repeat: {{ 10 * micro_steps }}
+  steps: {{ 10 * micro_steps }}
   collections:
     - !Stochastic
       moves:
@@ -169,7 +169,7 @@ system:
 {% endif %}
 
   energy:
-    nonbonded:
+    - !Nonbonded
       default:
 {% if potential == "fanourgakis" %}
         - !Fanourgakis {cutoff: {{ cutoff }}{% if kappa > 0 %}, debye_length: {{ 1.0 / kappa }}{% endif %}}
@@ -294,9 +294,9 @@ analysis:
 {% endif %}
 
 propagate:
-  seed: !Fixed 42
+  seed: !Hardware
   criterion: Metropolis
-  repeat: {{ 10 * micro_steps }}
+  steps: {{ 10 * micro_steps }}
   collections:
     - !Stochastic
       moves:
