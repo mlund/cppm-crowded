@@ -25,6 +25,7 @@ USER_KAPPAS=""
 KAPPA_MIN="" KAPPA_MAX="" KAPPA_N=""
 SYSTEMS="isotropic"
 REPLICAS=1
+SUBMIT=false
 
 _args=("$@")
 i=0
@@ -37,6 +38,7 @@ while [[ $i -lt ${#_args[@]} ]]; do
         --systems)   SYSTEMS="${_args[$((i+1))]}";     ((i+=2)) ;;
         --replicas)  REPLICAS="${_args[$((i+1))]}";    ((i+=2)) ;;
         --traj)      ((i+=1)) ;;
+        --submit)    SUBMIT=true; ((i+=1)) ;;
         -h|--help)   usage; exit 0 ;;
         *)           ((i+=1)) ;;
     esac
@@ -59,12 +61,18 @@ fi
 N_SYSTEMS=$(echo "$SYSTEMS" | tr ',' '\n' | wc -l)
 N=$(( N_KAPPA * N_SYSTEMS * REPLICAS ))
 
+ACTION=$([[ "$SUBMIT" == "true" ]] && echo "Submitting" || echo "Dry-run:")
+
 if [[ "$EXPLICIT_MODE" == "true" ]]; then
-    echo "Submitting $N parallel simulation(s) in explicit-ion mode (${N_SYSTEMS} system(s) x ${REPLICAS} replica(s))"
+    echo "$ACTION $N parallel simulation(s) in explicit-ion mode (${N_SYSTEMS} system(s) x ${REPLICAS} replica(s))"
 else
-    echo "Submitting $N parallel simulation(s) (${N_SYSTEMS} system(s) x ${N_KAPPA} kappa point(s) x ${REPLICAS} replica(s))"
+    echo "$ACTION $N parallel simulation(s) (${N_SYSTEMS} system(s) x ${N_KAPPA} kappa point(s) x ${REPLICAS} replica(s))"
 fi
 echo "  --cpus-per-task=$N"
 
-sbatch --cpus-per-task="$N" \
-    "$(dirname "$0")/lunarc_sweep.sh" "$@"
+if [[ "$SUBMIT" == "true" ]]; then
+    sbatch --cpus-per-task="$N" \
+        "$(dirname "$0")/lunarc_sweep.sh" "$@"
+else
+    echo "Dry-run complete. Use --submit to send to SLURM."
+fi

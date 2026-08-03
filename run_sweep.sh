@@ -50,6 +50,8 @@ Simulation parameters (passed to generate_input.py):
   --sdf                    Save Spatial distribution function to sdf.dx during production (default: off)
   --replicas <int>         Number of replicas per condition (default: 1, no suffix).
                            First replica keeps the base name; subsequent ones get _2, _3, ...
+  --submit                 Actually run the simulations. Without this flag only input files
+                           are generated (dry-run mode).
 
   -h, --help
 
@@ -73,6 +75,7 @@ POTENTIAL="fanourgakis"
 TRAJ=""
 SDF=""
 REPLICAS=1
+SUBMIT=false
 USER_KAPPAS=""
 KAPPA_MIN="" KAPPA_MAX="" KAPPA_N=""
 
@@ -95,6 +98,7 @@ while [[ $# -gt 0 ]]; do
         --traj)              TRAJ="--traj";           shift 1 ;;
         --sdf)               SDF="--sdf";             shift 1 ;;
         --replicas)          REPLICAS="$2";           shift 2 ;;
+        --submit)            SUBMIT=true;             shift 1 ;;
         -h|--help)           usage; exit 0 ;;
         *)                   echo "Unknown argument: $1" >&2; usage; exit 1 ;;
     esac
@@ -172,15 +176,19 @@ run_one() {
         ${SDF:+--sdf} \
         --force
 
-    cd "$SIM_DIR"
+    if [[ "$SUBMIT" == "true" ]]; then
+        cd "$SIM_DIR"
 
-    echo "  [${LOG_TAG}] Equilibration"
-    "$FAUNUS" run -i input_equi.yml -s state.yaml
+        echo "  [${LOG_TAG}] Equilibration"
+        "$FAUNUS" run -i input_equi.yml -s state.yaml
 
-    echo "  [${LOG_TAG}] Production (resuming from state.yaml)"
-    "$FAUNUS" run -i input.yml -s state.yaml
+        echo "  [${LOG_TAG}] Production (resuming from state.yaml)"
+        "$FAUNUS" run -i input.yml -s state.yaml
 
-    echo "  [${LOG_TAG}] Done"
+        echo "  [${LOG_TAG}] Done"
+    else
+        echo "  [${LOG_TAG}] Input files generated (dry-run; use --submit to run)"
+    fi
 }
 
 #######################################

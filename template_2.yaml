@@ -28,11 +28,11 @@
 {% set box_length = (n_macroions * macroion_volume / volume_fraction)**(1/3) %}
 {% set cutoff = cutoff | default(box_length / 2) %}
 {% if system_type == "neutral" %}
-{% set n_Cations = 2 %}
+{% set n_Cations = 100 %}
 {% else %}
-{% set n_Cations = 2 + n_macroions * abs_macroion_charge %}
+{% set n_Cations = 500 %}
 {% endif %}
-{% set n_Anions = 2 %}
+{% set n_Anions = 100 %}
 
 {% if system_type == "bulk" %}
 atoms:
@@ -159,11 +159,11 @@ system:
       insert: !GridCOM {rotate: true}
 {% if kappa == 0 %}
     - molecule: Cations
-      N: {{ 100 * n_Cations }}
+      N: {{ 2 * n_Cations }}
       active: {{ n_Cations }}
       insert: !RandomAtomPos {}
     - molecule: Anions
-      N: {{ 100 * n_Anions }}
+      N: {{ 2 * n_Anions }}
       active: {{ n_Anions }}
       insert: !RandomAtomPos {}
 {% endif %}
@@ -314,7 +314,7 @@ propagate:
           molecule: Cations
           atom: Na
           dp: 12.0
-          repeat: {{ 4 * n_macroions }}
+          repeat: {{ n_Cations }}
           preferential:
             reference: "molecule macroion"
             exponent: 2.0
@@ -323,7 +323,7 @@ propagate:
           molecule: Anions
           atom: Cl
           dp: 12.0
-          repeat: {{ 4 * n_macroions }}
+          repeat: {{ n_Anions }}
           preferential:
             reference: "molecule macroion"
             exponent: 2.0
