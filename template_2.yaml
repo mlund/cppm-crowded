@@ -187,33 +187,33 @@ analysis:
     selections: ["molecule macroion", "molecule macroion"]
     use_com: true
     file: rdf.csv
-    resolution: 0.05
+    resolution: 0.5
     frequency: !Every 10
 {% if kappa == 0 %}
   - !RadialDistribution
     selections: ["atomtype Na", "atomtype NP"]
     file: rdf-na-np.csv
-    resolution: 0.05
+    resolution: 0.25
     frequency: !Every 10
   - !RadialDistribution
     selections: ["atomtype Cl", "atomtype PP"]
     file: rdf-cl-pp.csv
-    resolution: 0.05
+    resolution: 0.25
     frequency: !Every 10
   - !RadialDistribution
     selections: ["atomtype Cl", "atomtype MP"]
     file: rdf-cl-mp.csv
-    resolution: 0.05
+    resolution: 0.25
     frequency: !Every 10
   - !RadialDistribution
     selections: ["atomtype Na", "atomtype MP"]
     file: rdf-na-mp.csv
-    resolution: 0.05
+    resolution: 0.25
     frequency: !Every 10
   - !RadialDistribution
     selections: ["atomtype Na", "atomtype Cl"]
     file: rdf-na-cl.csv
-    resolution: 0.05
+    resolution: 0.25
     frequency: !Every 10
 {% endif %}
   - !Multipole
@@ -222,7 +222,7 @@ analysis:
   - !MultipoleDistribution
     selections: ["molecule macroion", "molecule macroion"]
     file: multipole_dist.csv
-    resolution: 0.05
+    resolution: 0.5
     frequency: !Every 10
 {% if kappa == 0 %}
   - !CollectiveVariable

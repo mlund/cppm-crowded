@@ -89,7 +89,7 @@ def replica_mean_sem(folders, load_fn, col):
     if not dfs:
         return None, None, None
     x    = dfs[0].iloc[:, 0].values
-    arr  = np.array([df[col].values for df in dfs])
+    arr  = np.array([np.interp(x, df.iloc[:, 0].values, df[col].values) for df in dfs])
     mean = arr.mean(axis=0)
     sem  = arr.std(axis=0, ddof=1) / np.sqrt(len(dfs)) if len(dfs) > 1 else np.zeros_like(mean)
     return x, mean, sem
@@ -122,7 +122,7 @@ def iter_explicit_folders(sys_type):
     """Yield all explicit replica folders for a given system type."""
     if not explicit_dir.exists():
         return
-    pattern = re.compile(rf'^{re.escape(sys_type)}_(\d+)$')
+    pattern = re.compile(rf'^{re.escape(sys_type)}-exp(?:_(\d+))?$')
     for folder in sorted(explicit_dir.iterdir()):
         if folder.is_dir() and pattern.match(folder.name):
             yield folder
@@ -168,7 +168,7 @@ def parse_explicit():
         print("  Warning: explicit/ directory not found.")
         return {}
     sys_types = set()
-    pattern = re.compile(r'^(dipolar|isotropic|neutral|quadrupolar|bulk)_(\d+)$')
+    pattern = re.compile(r'^(dipolar|isotropic|neutral|quadrupolar|bulk)-exp(?:_(\d+))?$')
     for folder in explicit_dir.iterdir():
         m = pattern.match(folder.name)
         if m:
@@ -447,7 +447,7 @@ for sys_type, items in sorted(folders_by_type.items()):
     n     = len(items)
     ncols = min(5, n)
     nrows = (n + ncols - 1) // ncols
-    fig, axes = plt.subplots(nrows, ncols, figsize=(4 * ncols, 3 * nrows), squeeze=False)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(4 * ncols, 3 * nrows), squeeze=False, sharey=True)
 
     for idx, (kappa, label, folder) in enumerate(items):
         ax = axes[idx // ncols][idx % ncols]
@@ -469,6 +469,18 @@ for sys_type, items in sorted(folders_by_type.items()):
     fig.savefig(plot_dir / f'{fname}.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
     print(f"Saved {fname}.png")
+
+# ── pre-compute global RDF y-limit ───────────────────────────────────────────
+_rdf_gmax = 0.0
+for _sys, _items in folders_by_type.items():
+    for _kappa, _folders in group_by_kappa(_items).items():
+        _, _g, _s = replica_mean_sem(_folders, load_rdf, 'g(r)')
+        if _g is not None:
+            _rdf_gmax = max(_rdf_gmax, (_g + _s).max())
+    _, _ge, _se = replica_mean_sem(list(iter_explicit_folders(_sys)), load_rdf, 'g(r)')
+    if _ge is not None:
+        _rdf_gmax = max(_rdf_gmax, (_ge + _se).max())
+rdf_ymax = np.ceil(_rdf_gmax * 1.1 * 10) / 10  # 10 % headroom, rounded to 1 decimal
 
 # ── 5. RDF panels (mean ± SEM across replicates per kappa) ───────────────────
 for sys_type, items in sorted(folders_by_type.items()):
@@ -495,6 +507,7 @@ for sys_type, items in sorted(folders_by_type.items()):
                 ax.plot(r, g_exp_interp, linewidth=1.0, color='black', linestyle='--', alpha=0.5)
             ax.axhline(1.0, color='gray', linewidth=0.6, linestyle='--')
             ax.set_xlim(left=40)
+            ax.set_ylim(bottom=0, top=rdf_ymax)
         ax.set_title(f'κ={kappa:.4f} (n={len(folders)})', fontsize=8)
         ax.set_xlabel('r (Å)', fontsize=7)
         ax.set_ylabel('g(r)', fontsize=7)
@@ -537,6 +550,7 @@ for sys_type, items in sorted(folders_by_type.items()):
 
     ax.axhline(1.0, color='gray', linewidth=0.8, linestyle='--')
     ax.set_xlim(left=40)
+    ax.set_ylim(bottom=0, top=rdf_ymax)
     ax.set_xlabel('r (Å)')
     ax.set_ylabel('g(r)')
     ax.set_title(f'{sys_type.capitalize()} — RDF overlay')
