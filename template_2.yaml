@@ -28,11 +28,12 @@
 {% set box_length = (n_macroions * macroion_volume / volume_fraction)**(1/3) %}
 {% set cutoff = cutoff | default(box_length / 2) %}
 {% if system_type == "neutral" %}
-{% set n_Cations = 100 %}
+{% set n_Cations = 205 %}
+{% set n_Anions = 205 %}
 {% else %}
 {% set n_Cations = 500 %}
-{% endif %}
 {% set n_Anions = 100 %}
+{% endif %}
 
 {% if system_type == "bulk" %}
 atoms:
