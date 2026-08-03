@@ -57,12 +57,12 @@ system:
 
   blocks:
     - molecule: Cations
-      N: 800
-      active: 200
+      N: 760
+      active: 380
       insert: !RandomAtomPos {}
     - molecule: Anions
-      N: 800
-      active: 200
+      N: 760
+      active: 380
       insert: !RandomAtomPos {}
 
   energy:
@@ -115,7 +115,7 @@ propagate:
       moves:
         - !SpeciationMove
           temperature: 298.15
-          repeat: 200
+          repeat: 380
           reactions:
             - ["= Cations + Anions", !dG 0.0]
 
