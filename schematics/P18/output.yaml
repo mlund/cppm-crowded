@@ -1,0 +1,77 @@
+medium:
+  permittivity: Water
+  salt: null
+  temperature: 298.15
+blocks:
+- molecule: macroion
+  'N': 1
+  active: null
+  insert: !GridCOM
+    rotate: true
+cell: !Cuboid
+- 69.45862771570725
+- 69.45862771570725
+- 69.45862771570725
+energy_change:
+  drift: 0.0
+  final: 0.0
+  initial: 0.0
+energy_timers:
+  celloverlap: '35.48 (energy: 24.31, update: 11.17)'
+  nonbonded: '64.51 (energy: 43.42, update: 21.09)'
+propagate:
+  repeat: 1000
+  seed: !Fixed 42
+  collections:
+  - !Stochastic
+    repeat: 1
+    elapsed_seconds: 0.008608882
+    moves:
+    - !TranslateMolecule
+      molecule: macroion
+      max_displacement: 10.0
+      directions: xyz
+      weight: 1.0
+      repeat: 1
+      statistics:
+        num_trials: 507
+        num_accepted: 507
+        mean_square_displacement:
+          avg: 30.499406655273805
+          'n': 507
+        timer:
+          accumulated:
+            secs: 0
+            nanos: 0
+        info: {}
+        energy_change_sum: 0.0
+        acceptance_ratio: 1.0
+    - !RotateMolecule
+      molecule: macroion
+      max_displacement: 1.0
+      weight: 1.0
+      repeat: 1
+      statistics:
+        num_trials: 493
+        num_accepted: 493
+        mean_square_displacement:
+          avg: 0.3328426625265467
+          'n': 493
+        timer:
+          accumulated:
+            secs: 0
+            nanos: 0
+        info: {}
+        energy_change_sum: 0.0
+        acceptance_ratio: 1.0
+  criterion: MetropolisHastings
+analysis:
+- structure printer:
+    file: traj.xtc
+    num_samples: 100
+- multipole:
+    selection: molecule macroion
+    num_samples: 100
+    charge: '-8.0000 ± 0.0000'
+    capacitance: 0.0
+    dipole_moment: '186.5707 ± 0.0000'
