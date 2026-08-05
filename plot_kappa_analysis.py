@@ -14,7 +14,18 @@ from scipy import stats as scipy_stats
 parser = argparse.ArgumentParser(description='Plot kappa analysis results.')
 parser.add_argument('path', help='Path to directory containing implicit/ and explicit/ subdirectories')
 parser.add_argument('plots', help='Path to the output folder for plots')
+parser.add_argument('--no-titles', action='store_true', help='Suppress all plot titles and suptitles')
 args = parser.parse_args()
+
+
+def ax_title(ax, text, **kw):
+    if not args.no_titles:
+        ax.set_title(text, **kw)
+
+
+def fig_title(fig, text, **kw):
+    if not args.no_titles:
+        fig.suptitle(text, **kw)
 
 top_dir      = Path(args.path).resolve()
 implicit_dir = top_dir / 'implicit'
@@ -22,6 +33,8 @@ explicit_dir = top_dir / 'explicit'
 base_dir     = implicit_dir
 plot_dir     = Path(args.plots).resolve()
 plot_dir.mkdir(parents=True, exist_ok=True)
+
+plt.rcParams['font.family'] = 'sans-serif'
 
 colors = {'dipolar': '#1f77b4', 'isotropic': '#2ca02c', 'neutral': '#ff7f0e', 'quadrupolar': '#d62728'}
 cmaps  = {'dipolar': 'Blues',   'isotropic': 'Greens',  'neutral': 'Oranges', 'quadrupolar': 'Reds'}
@@ -289,12 +302,12 @@ for ax, sys_type in zip(axes, sorted(pressure_data)):
                        label=f'Interp κ={ik:.4f}')
 
     ax.legend(fontsize=7)
-    ax.set_xlabel(r'$\kappa$ (Å$^{-1}$)')
-    ax.set_ylabel(r'$P_{ex}$ (mM)')
-    ax.set_title(sys_type.capitalize())
+    ax.set_xlabel(r'$\kappa$ [Å$^{-1}$]')
+    ax.set_ylabel(r'$P_{ex}$ [mM]')
+    ax_title(ax, sys_type.capitalize())
     ax.grid(True, alpha=0.3)
 
-fig.suptitle('Excess pressure vs implicit-salt screening', fontweight='bold')
+fig_title(fig, 'Excess pressure vs implicit-salt screening', fontweight='bold')
 fig.tight_layout()
 fig.savefig(plot_dir / 'pressure_vs_kappa.png', dpi=150, bbox_inches='tight')
 plt.close(fig)
@@ -348,14 +361,14 @@ for sys_type, best_kappa in best_kappas.items():
     title = f'{sys_type.capitalize()} — best κ={best_kappa:.4f}'
     if sys_type in interp_kappas:
         title += f'  (interpolated κ={interp_kappas[sys_type]:.4f})'
-    ax_top.set_title(title, fontweight='bold')
+    ax_title(ax_top, title, fontweight='bold')
 
     ax_bot.plot(r_plot, residuals, color=color_imp, linewidth=1.0)
     ax_bot.fill_between(r_plot, residuals - res_err, residuals + res_err,
                         color=color_imp, alpha=0.3)
     ax_bot.axhline(0, color='gray', linewidth=0.8, linestyle='--')
-    ax_bot.set_xlabel('r (Å)')
-    ax_bot.set_ylabel(r'$\Delta g(r)$ (impl − expl)')
+    ax_bot.set_xlabel('r [Å]')
+    ax_bot.set_ylabel(r'$\Delta g(r)$ [impl − expl]')
     ax_bot.grid(True, alpha=0.3)
 
     fig.tight_layout()
@@ -396,7 +409,7 @@ if n_sys > 0:
             pex_err_pts.append(pex_dict[kappa][1])
 
         if len(e_pts) < 2:
-            ax_pe.set_title(f'{sys_type.capitalize()} — insufficient data')
+            ax_title(ax_pe, f'{sys_type.capitalize()} — insufficient data')
             continue
 
         e_arr   = np.array(e_pts)
@@ -426,16 +439,16 @@ if n_sys > 0:
         ax_pe.plot(x_line, slope * x_line + intercept, 'k--', linewidth=1.2,
                    label=f'R²={r2:.3f},  p={p_val:.1e}')
 
-        ax_pe.set_xlabel('Mean energy (kT)')
-        ax_pe.set_ylabel(r'$P_{ex}$ (mM)')
-        ax_pe.set_title(f'{sys_type.capitalize()}')
+        ax_pe.set_xlabel('Mean energy [kT]')
+        ax_pe.set_ylabel(r'$P_{ex}$ [mM]')
+        ax_title(ax_pe, f'{sys_type.capitalize()}')
         ax_pe.legend(fontsize=8)
         ax_pe.grid(True, alpha=0.3)
 
         cb = fig_pe.colorbar(sc, ax=ax_pe)
-        cb.set_label(r'$\kappa$ (Å$^{-1}$)')
+        cb.set_label(r'$\kappa$ [Å$^{-1}$]')
 
-    fig_pe.suptitle(r'$P_{ex}$ vs mean energy — implicit simulations', fontweight='bold')
+    fig_title(fig_pe, r'$P_{ex}$ vs mean energy — implicit simulations', fontweight='bold')
     fig_pe.tight_layout()
     fig_pe.savefig(plot_dir / 'pex_vs_energy.png', dpi=150, bbox_inches='tight')
     plt.close(fig_pe)
@@ -454,16 +467,16 @@ for sys_type, items in sorted(folders_by_type.items()):
         df = load_energy(folder)
         if df is not None and 'total' in df.columns:
             ax.plot(df['step'], df['total'], linewidth=0.8, color=colors.get(sys_type, 'k'))
-        ax.set_title(label, fontsize=8)
+        ax_title(ax, label, fontsize=8)
         ax.set_xlabel('MC step', fontsize=7)
-        ax.set_ylabel('E (kT)', fontsize=7)
+        ax.set_ylabel('E [kT]', fontsize=7)
         ax.tick_params(labelsize=6)
         ax.grid(True, alpha=0.3)
 
     for idx in range(n, nrows * ncols):
         axes[idx // ncols][idx % ncols].set_visible(False)
 
-    fig.suptitle(f'{sys_type.capitalize()} — energy convergence', fontweight='bold')
+    fig_title(fig, f'{sys_type.capitalize()} — energy convergence', fontweight='bold')
     fig.tight_layout()
     fname = f'energy_convergence_{sys_type}'
     fig.savefig(plot_dir / f'{fname}.png', dpi=150, bbox_inches='tight')
@@ -508,8 +521,8 @@ for sys_type, items in sorted(folders_by_type.items()):
             ax.axhline(1.0, color='gray', linewidth=0.6, linestyle='--')
             ax.set_xlim(left=40)
             ax.set_ylim(bottom=0, top=rdf_ymax)
-        ax.set_title(f'κ={kappa:.4f} (n={len(folders)})', fontsize=8)
-        ax.set_xlabel('r (Å)', fontsize=7)
+        ax_title(ax, f'κ={kappa:.4f} (n={len(folders)})', fontsize=8)
+        ax.set_xlabel('r [Å]', fontsize=7)
         ax.set_ylabel('g(r)', fontsize=7)
         ax.tick_params(labelsize=6)
         ax.grid(True, alpha=0.3)
@@ -517,7 +530,7 @@ for sys_type, items in sorted(folders_by_type.items()):
     for idx in range(n, nrows * ncols):
         axes[idx // ncols][idx % ncols].set_visible(False)
 
-    fig.suptitle(f'{sys_type.capitalize()} — radial distribution functions', fontweight='bold')
+    fig_title(fig, f'{sys_type.capitalize()} — radial distribution functions', fontweight='bold')
     fig.tight_layout()
     fname = f'rdf_{sys_type}'
     fig.savefig(plot_dir / f'{fname}.png', dpi=150, bbox_inches='tight')
@@ -551,20 +564,77 @@ for sys_type, items in sorted(folders_by_type.items()):
     ax.axhline(1.0, color='gray', linewidth=0.8, linestyle='--')
     ax.set_xlim(left=40)
     ax.set_ylim(bottom=0, top=rdf_ymax)
-    ax.set_xlabel('r (Å)')
+    ax.set_xlabel('r [Å]')
     ax.set_ylabel('g(r)')
-    ax.set_title(f'{sys_type.capitalize()} — RDF overlay')
+    ax_title(ax, f'{sys_type.capitalize()} — RDF overlay')
     ax.grid(True, alpha=0.3)
 
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
-    fig.colorbar(sm, ax=ax).set_label(r'$\kappa$ (Å$^{-1}$)')
+    fig.colorbar(sm, ax=ax).set_label(r'$\kappa$ [Å$^{-1}$]')
 
     fig.tight_layout()
     fname = f'rdf_overlay_{sys_type}'
     fig.savefig(plot_dir / f'{fname}.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
     print(f"Saved {fname}.png")
+
+# ── 6b. RDF overlay — all systems on one plot with shared rainbow colorbar ────
+print("\nPlotting combined RDF overlay (all systems, shared colorbar)...")
+_overlay_types = [t for t in ('isotropic', 'dipolar', 'quadrupolar') if t in folders_by_type]
+
+if len(_overlay_types) >= 2:
+    # Collect global kappa range across all target systems
+    _all_kappas = []
+    for _t in _overlay_types:
+        _all_kappas.extend(group_by_kappa(folders_by_type[_t]).keys())
+    _kmin_global = min(_all_kappas)
+    _kmax_global = max(_all_kappas)
+
+    _cmap_combined = plt.get_cmap('rainbow')
+    _norm_combined = plt.Normalize(vmin=_kmin_global, vmax=_kmax_global)
+
+    fig_comb, ax_comb = plt.subplots(figsize=(7, 5))
+
+    _sys_styles = {'isotropic': ':', 'quadrupolar': '-', 'dipolar': '--'}
+
+    for _t in _overlay_types:
+        _ls = _sys_styles.get(_t, '-')
+        _groups = group_by_kappa(folders_by_type[_t])
+        for _kappa, _folders in _groups.items():
+            _r, _g_mean, _ = replica_mean_sem(_folders, load_rdf, 'g(r)')
+            if _r is not None:
+                ax_comb.plot(_r, _g_mean, linewidth=1.0, alpha=1, linestyle=_ls,
+                             #marker='o', markevery=1, markersize=5,
+                             color=_cmap_combined(_norm_combined(_kappa)))
+
+    # Explicit overlays — same linestyle as their system, black to distinguish from implicit
+    for _t in _overlay_types:
+        _ls = _sys_styles.get(_t, '-')
+        _r_exp, _g_exp, _ = replica_mean_sem(list(iter_explicit_folders(_t)), load_rdf, 'g(r)')
+        if _r_exp is not None:
+            ax_comb.plot(_r_exp, _g_exp, linewidth=1.0, color='black',
+                         linestyle=_ls, alpha=0.75,
+                         label=f'{_t.capitalize()}')
+
+    ax_comb.axhline(1.0, color='gray', linewidth=0.6, linestyle='--')
+    ax_comb.set_xlim(left=40, right=60)
+    ax_comb.xaxis.set_major_locator(plt.MultipleLocator(4))
+    ax_comb.set_ylim(bottom=0, top=rdf_ymax)
+    ax_comb.set_xlabel('r [Å]')
+    ax_comb.set_ylabel('g(r)')
+    ax_title(ax_comb, 'RDF overlay — isotropic, quadrupolar & dipolar')
+    ax_comb.legend(fontsize=8)
+    ax_comb.grid(False)
+
+    _sm_comb = plt.cm.ScalarMappable(cmap=_cmap_combined, norm=_norm_combined)
+    _sm_comb.set_array([])
+    fig_comb.colorbar(_sm_comb, ax=ax_comb).set_label(r'$\kappa$ [Å$^{-1}$]')
+
+    fig_comb.tight_layout()
+    fig_comb.savefig(plot_dir / 'rdf_overlay_combined.png', dpi=150, bbox_inches='tight')
+    plt.close(fig_comb)
+    print("Saved rdf_overlay_combined.png")
 
 # ── 7. Multipole energy decomposition ─────────────────────────────────────────
 energy_cols   = ['exact', 'tot', 'ii', 'id', 'dd', 'iq']
@@ -612,30 +682,30 @@ for sys_type, items in sorted(folders_by_type.items()):
             if ax_idx == 0:
                 ax.legend(fontsize=7)
         ax.set_ylim(ymin - ypad, ymax + ypad)
-        ax.set_xlabel('R (Å)', fontsize=8)
-        ax.set_ylabel('Energy (kT)', fontsize=8)
-        ax.set_title(title, fontsize=9)
+        ax.set_xlabel('R [Å]', fontsize=8)
+        ax.set_ylabel('Energy [kT]', fontsize=8)
+        ax_title(ax, title, fontsize=9)
         ax.tick_params(labelsize=7)
         ax.grid(True, alpha=0.3)
 
-    fig.suptitle(f'{sys_type.capitalize()} — energy decomposition (mean ± SEM)', fontweight='bold')
+    fig_title(fig, f'{sys_type.capitalize()} — energy decomposition (mean ± SEM)', fontweight='bold')
     fig.tight_layout(rect=[0, 0.07, 1, 1])
     cax = fig.add_axes([0.15, 0.02, 0.7, 0.025])
     sm  = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
-    fig.colorbar(sm, cax=cax, orientation='horizontal', label=r'$\kappa$ (Å$^{-1}$)')
+    fig.colorbar(sm, cax=cax, orientation='horizontal', label=r'$\kappa$ [Å$^{-1}$]')
     fname = f'multipole_energy_{sys_type}'
     fig.savefig(plot_dir / f'{fname}.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
     print(f"Saved {fname}.png")
 
 # ── 8. Orientational correlations ─────────────────────────────────────────────
-corr_cols   = ['mucorr', 'p2', 'quadcorr_norm', 'long']
+corr_cols   = ['mucorr', 'long', 'quadcorr_norm', 'p2']
 corr_labels = [
-    r'$\langle\hat{\mu}_i\cdot\hat{\mu}_j\rangle$',
-    r'$P_2$ (nematic order)',
-    r'$\langle\hat{\Phi}_i:\hat{\Phi}_j\rangle$',
-    'Longitudinal projection',
+    r'Dipole correlation, $\langle\hat{\mu}_i\cdot\hat{\mu}_j\rangle$',
+    r'Longitudinal projection, $\langle(\hat{\mu}_i\cdot\hat{R})(\hat{\mu}_i\cdot\hat{R})\rangle$',
+    r'Quadrupole correlation, $\langle\hat{\Phi}_i:\hat{\Phi}_j\rangle$',
+    r'Nematic order, $\langle{(3}\mathrm{cos}^2\,\theta-1)/{2}\rangle$',
 ]
 
 for sys_type, items in sorted(folders_by_type.items()):
@@ -682,22 +752,119 @@ for sys_type, items in sorted(folders_by_type.items()):
         ax.axhline(0, color='gray', linewidth=0.6, linestyle='--')
         ax.set_ylim(ymin - ypad, ymax + ypad)
         ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:.2f}'))
-        ax.set_xlabel('R (Å)', fontsize=8)
+        ax.set_xlabel('R [Å]', fontsize=8)
         ax.set_ylabel('Correlation', fontsize=8)
-        ax.set_title(label, fontsize=9)
+        ax_title(ax, label, fontsize=9)
         ax.tick_params(labelsize=7)
         ax.grid(True, alpha=0.3)
 
-    fig.suptitle(f'{sys_type.capitalize()} — orientational correlations (mean ± SEM)', fontweight='bold')
+    fig_title(fig, f'{sys_type.capitalize()} — orientational correlations (mean ± SEM)', fontweight='bold')
     fig.tight_layout(rect=[0, 0.07, 1, 1])
     cax = fig.add_axes([0.15, 0.02, 0.7, 0.025])
     sm  = plt.cm.ScalarMappable(cmap=cmap, norm=norm_kappa)
     sm.set_array([])
-    fig.colorbar(sm, cax=cax, orientation='horizontal', label=r'$\kappa$ (Å$^{-1}$)')
+    fig.colorbar(sm, cax=cax, orientation='horizontal', label=r'$\kappa$ [Å$^{-1}$]')
     fname = f'multipole_corr_{sys_type}'
     fig.savefig(plot_dir / f'{fname}.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
     print(f"Saved {fname}.png")
+
+# ── 8b. Combined orientational correlations — all systems, shared rainbow colorbar ──
+print("\nPlotting combined orientational correlations...")
+_corr_types = [t for t in ('isotropic', 'dipolar', 'quadrupolar') if t in folders_by_type]
+
+if len(_corr_types) >= 2:
+    _corr_all_k = []
+    for _t in _corr_types:
+        _corr_all_k.extend(group_by_kappa(folders_by_type[_t]).keys())
+    _corr_kmin = min(_corr_all_k)
+    _corr_kmax = max(_corr_all_k)
+    _corr_cmap = plt.get_cmap('rainbow')
+    _corr_norm = plt.Normalize(vmin=_corr_kmin, vmax=_corr_kmax)
+    _corr_styles = {'isotropic': ':', 'dipolar': '--', 'quadrupolar': '-'}
+
+    # Cache all data and find global y range
+    _cc, _ce = {}, {}
+    _cymin, _cymax = np.inf, -np.inf
+    for _t in _corr_types:
+        _cg = group_by_kappa(folders_by_type[_t])
+        for _col in corr_cols:
+            for _kappa, _folders in _cg.items():
+                _r, _m, _s = replica_mean_sem(_folders, load_multipole, _col)
+                _cc[(_t, _col, _kappa)] = (_r, _m, _s)
+                if _m is not None:
+                    _cymin = min(_cymin, (_m - _s).min())
+                    _cymax = max(_cymax, (_m + _s).max())
+            _re, _me, _ = replica_mean_sem(list(iter_explicit_folders(_t)), load_multipole, _col)
+            _ce[(_t, _col)] = (_re, _me)
+            if _me is not None:
+                _cymin = min(_cymin, _me.min())
+                _cymax = max(_cymax, _me.max())
+
+    if not np.isinf(_cymin):
+        _cypad = (_cymax - _cymin) * 0.05
+
+        fig_cc, axes_cc = plt.subplots(2, 2, figsize=(9, 7),
+                                       sharex=True, sharey='row', squeeze=False)
+        fig_cc.subplots_adjust(hspace=0.16, wspace=0.12, bottom=0.17)
+
+        for _ci, (_col, _clabel) in enumerate(zip(corr_cols, corr_labels)):
+            _row, _pcol = divmod(_ci, 2)
+            _ax = axes_cc[_row][_pcol]
+
+            for _t in _corr_types:
+                _ls = _corr_styles.get(_t, '-')
+                for _kappa in group_by_kappa(folders_by_type[_t]):
+                    _r, _m, _ = _cc[(_t, _col, _kappa)]
+                    if _r is not None:
+                        _ax.plot(_r, _m, linewidth=0.5, alpha=1, linestyle=_ls,
+                                 color=_corr_cmap(_corr_norm(_kappa)))
+
+            for _t in _corr_types:
+                _ls = _corr_styles.get(_t, '-')
+                _re, _me = _ce[(_t, _col)]
+                if _re is not None:
+                    _ax.plot(_re, _me, linewidth=0.5, color='black',
+                             linestyle=_ls, alpha=1, label=_t.capitalize())
+
+            _ax.axhline(0, color='gray', linewidth=1, linestyle='--')
+            _ax.set_ylim((-0.1, 0.28) if _row == 0 else (-0.28, 0.1))
+            _ax.set_xlim(41, 59)
+            _ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:.1f}'))
+            #_ax.grid(True, alpha=0.2)
+
+            if _row == 1:
+                _ax.set_xlabel('R [Å]', fontsize=9)
+            if _pcol == 1:
+                _ax.set_ylabel(_clabel, fontsize=9)
+                _ax.yaxis.set_label_position('right')
+                _ax.yaxis.tick_right()
+                #_ax.tick_params(axis='y', which='both', labelright=True, labelleft=False)
+            else:
+                _ax.set_ylabel(_clabel, fontsize=9)
+
+        # x ticks 42–58 step 2, pruning 40 and 60 from the visible range
+        axes_cc[0][0].set_xticks(range(42, 60, 4))
+
+        # half the default number of y ticks on each row
+        for _pc in range(2):
+            axes_cc[0][_pc].yaxis.set_major_locator(plt.MaxNLocator(nbins=4))
+            axes_cc[1][_pc].yaxis.set_major_locator(plt.MaxNLocator(nbins=4))
+
+        axes_cc[0][0].legend(fontsize=8)
+
+        _sm_cc = plt.cm.ScalarMappable(cmap=_corr_cmap, norm=_corr_norm)
+        _sm_cc.set_array([])
+        # colorbar spanning exactly from left-plot left edge to right-plot right edge
+        _pl = axes_cc[1][0].get_position()
+        _pr = axes_cc[1][1].get_position()
+        _cax_cc = fig_cc.add_axes([_pl.x0, 0.06, _pr.x1 - _pl.x0, 0.03])
+        fig_cc.colorbar(_sm_cc, cax=_cax_cc, orientation='horizontal').set_label(r'$\kappa$ [Å$^{-1}$]')
+
+        fig_title(fig_cc, 'Combined orientational correlations — all systems', fontweight='bold')
+        fig_cc.savefig(plot_dir / 'multipole_corr_combined.png', dpi=150, bbox_inches='tight')
+        plt.close(fig_cc)
+        print("Saved multipole_corr_combined.png")
 
 # ── 9. Summary table: RDF first-peak statistics ───────────────────────────────
 print("\n── RDF first-peak summary ──")
