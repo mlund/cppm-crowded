@@ -621,15 +621,18 @@ if len(_overlay_types) >= 2:
     ax_comb.set_xlim(left=40, right=60)
     ax_comb.xaxis.set_major_locator(plt.MultipleLocator(4))
     ax_comb.set_ylim(bottom=0, top=rdf_ymax)
-    ax_comb.set_xlabel('r [Å]')
-    ax_comb.set_ylabel('g(r)')
+    ax_comb.set_xlabel('r [Å]', fontsize=13)
+    ax_comb.set_ylabel('g(r)', fontsize=13)
+    ax_comb.tick_params(axis='both', labelsize=12)
     ax_title(ax_comb, 'RDF overlay — isotropic, quadrupolar & dipolar')
-    ax_comb.legend(fontsize=8)
+    ax_comb.legend(fontsize=11)
     ax_comb.grid(False)
 
     _sm_comb = plt.cm.ScalarMappable(cmap=_cmap_combined, norm=_norm_combined)
     _sm_comb.set_array([])
-    fig_comb.colorbar(_sm_comb, ax=ax_comb).set_label(r'$\kappa$ [Å$^{-1}$]')
+    _cb_comb = fig_comb.colorbar(_sm_comb, ax=ax_comb)
+    _cb_comb.set_label(r'$\kappa$ [Å$^{-1}$]', fontsize=13)
+    _cb_comb.ax.tick_params(labelsize=12)
 
     fig_comb.tight_layout()
     fig_comb.savefig(plot_dir / 'rdf_overlay_combined.png', dpi=150, bbox_inches='tight')
@@ -702,10 +705,10 @@ for sys_type, items in sorted(folders_by_type.items()):
 # ── 8. Orientational correlations ─────────────────────────────────────────────
 corr_cols   = ['mucorr', 'long', 'quadcorr_norm', 'p2']
 corr_labels = [
-    r'Dipole correlation, $\langle\hat{\mu}_i\cdot\hat{\mu}_j\rangle$',
-    r'Longitudinal projection, $\langle(\hat{\mu}_i\cdot\hat{R})(\hat{\mu}_i\cdot\hat{R})\rangle$',
-    r'Quadrupole correlation, $\langle\hat{\Phi}_i:\hat{\Phi}_j\rangle$',
-    r'Nematic order, $\langle{(3}\mathrm{cos}^2\,\theta-1)/{2}\rangle$',
+    r'Dipole correlation',#, $\langle\hat{\mu}_i\cdot\hat{\mu}_j\rangle$',
+    r'Longitudinal projection',#, $\langle(\hat{\mu}_i\cdot\hat{R})(\hat{\mu}_i\cdot\hat{R})\rangle$',
+    r'Quadrupole correlation',#, $\langle\hat{\Phi}_i:\hat{\Phi}_j\rangle$',
+    r'Nematic order',#, $\langle{(3}\mathrm{cos}^2\,\theta-1)/{2}\rangle$',
 ]
 
 for sys_type, items in sorted(folders_by_type.items()):
@@ -817,31 +820,34 @@ if len(_corr_types) >= 2:
                 for _kappa in group_by_kappa(folders_by_type[_t]):
                     _r, _m, _ = _cc[(_t, _col, _kappa)]
                     if _r is not None:
-                        _ax.plot(_r, _m, linewidth=0.5, alpha=1, linestyle=_ls,
+                        _ax.plot(_r, _m, linewidth=1, alpha=1, linestyle=_ls,
                                  color=_corr_cmap(_corr_norm(_kappa)))
 
             for _t in _corr_types:
                 _ls = _corr_styles.get(_t, '-')
                 _re, _me = _ce[(_t, _col)]
                 if _re is not None:
-                    _ax.plot(_re, _me, linewidth=0.5, color='black',
+                    _ax.plot(_re, _me, linewidth=1, color='black',
                              linestyle=_ls, alpha=1, label=_t.capitalize())
 
             _ax.axhline(0, color='gray', linewidth=1, linestyle='--')
             _ax.set_ylim((-0.1, 0.28) if _row == 0 else (-0.28, 0.1))
             _ax.set_xlim(41, 59)
             _ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:.1f}'))
+            _ax.tick_params(axis='both', labelsize=12)
             #_ax.grid(True, alpha=0.2)
+            _ax.text(0.97, 0.05, f'({chr(ord("a") + _ci)})', transform=_ax.transAxes,
+                     fontsize=12, ha='right', va='bottom')
 
             if _row == 1:
-                _ax.set_xlabel('R [Å]', fontsize=9)
+                _ax.set_xlabel('R [Å]', fontsize=13)
             if _pcol == 1:
-                _ax.set_ylabel(_clabel, fontsize=9)
+                _ax.set_ylabel(_clabel, fontsize=12)
                 _ax.yaxis.set_label_position('right')
                 _ax.yaxis.tick_right()
                 #_ax.tick_params(axis='y', which='both', labelright=True, labelleft=False)
             else:
-                _ax.set_ylabel(_clabel, fontsize=9)
+                _ax.set_ylabel(_clabel, fontsize=12)
 
         # x ticks 42–58 step 2, pruning 40 and 60 from the visible range
         axes_cc[0][0].set_xticks(range(42, 60, 4))
@@ -851,7 +857,7 @@ if len(_corr_types) >= 2:
             axes_cc[0][_pc].yaxis.set_major_locator(plt.MaxNLocator(nbins=4))
             axes_cc[1][_pc].yaxis.set_major_locator(plt.MaxNLocator(nbins=4))
 
-        axes_cc[0][0].legend(fontsize=8)
+        axes_cc[0][0].legend(fontsize=11)
 
         _sm_cc = plt.cm.ScalarMappable(cmap=_corr_cmap, norm=_corr_norm)
         _sm_cc.set_array([])
@@ -859,7 +865,9 @@ if len(_corr_types) >= 2:
         _pl = axes_cc[1][0].get_position()
         _pr = axes_cc[1][1].get_position()
         _cax_cc = fig_cc.add_axes([_pl.x0, 0.06, _pr.x1 - _pl.x0, 0.03])
-        fig_cc.colorbar(_sm_cc, cax=_cax_cc, orientation='horizontal').set_label(r'$\kappa$ [Å$^{-1}$]')
+        _cb_cc = fig_cc.colorbar(_sm_cc, cax=_cax_cc, orientation='horizontal')
+        _cb_cc.set_label(r'$\kappa$ [Å$^{-1}$]', fontsize=13)
+        _cb_cc.ax.tick_params(labelsize=12)
 
         fig_title(fig_cc, 'Combined orientational correlations — all systems', fontweight='bold')
         fig_cc.savefig(plot_dir / 'multipole_corr_combined.png', dpi=150, bbox_inches='tight')
