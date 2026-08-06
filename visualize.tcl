@@ -11,14 +11,17 @@ set isovalue 1.0
 array set type_radius {MP 20.0  PP 2.0  NP 2.0  Na 2.0  Cl 2.0  UP 2.0}
 
 # ColorID per particle type
-array set type_color  {MP 2    PP 0    NP 1    Na 0    Cl 1    UP 8 }
+array set type_color  {MP 6    PP 1    NP 0    Na 3    Cl 7    UP 8 }
+
+# Material per particle type
+array set type_material  {MP Opaque    PP Edgy    NP Edgy    Na Edgy    Cl Edgy   UP Edgy }
 
 # ColorID per SDF file
 array set dx_color {
-    sdf-cl.dx 1
-    sdf-na.dx 0
-    sdf-np.dx 3
-    sdf-pp.dx 5
+    sdf-cl.dx 7
+    sdf-na.dx 3
+    sdf-np.dx 0
+    sdf-pp.dx 1
 }
 
 # --- Parse xyz to find which types are present ---
@@ -38,6 +41,9 @@ close $fp
 # --- Display settings ---
 axes location Off
 color Display Background white
+light 2 on
+light 3 on
+display projection Orthographic
 
 # --- Load structure + volumetric data ---
 mol new $xyzfile type xyz
@@ -64,7 +70,7 @@ foreach t $found_types {
     mol modselect   $rep top "type $t"
     mol modstyle    $rep top VDW 1.0 32.0
     mol modcolor    $rep top ColorID $type_color($t)
-    mol modmaterial $rep top Opaque
+    mol modmaterial $rep top $type_material($t)
     incr rep
 }
 
