@@ -377,6 +377,70 @@ for sys_type, best_kappa in best_kappas.items():
     plt.close(fig)
     print(f"Saved {fname}.png")
 
+# ── 2b. Combined best-kappa comparison — all systems overlaid ─────────────────
+print("\nPlotting combined best-kappa comparison...")
+_bk_styles = {'isotropic': ':', 'dipolar': '--', 'quadrupolar': '-', 'neutral': '-.'}
+_bk_order  = [t for t in ('isotropic', 'dipolar', 'quadrupolar', 'neutral') if t in best_kappas]
+
+if _bk_order:
+    _bfig, (_bax_t, _bax_b) = plt.subplots(
+        2, 1, figsize=(6, 7),
+        gridspec_kw={'height_ratios': [2, 1]},
+        sharex=True
+    )
+
+    for _btype in _bk_order:
+        _bkappa     = best_kappas[_btype]
+        _bgroups    = group_by_kappa(folders_by_type[_btype])
+        _bimp_fldrs = _bgroups.get(_bkappa, [])
+        if not _bimp_fldrs:
+            continue
+
+        _br_imp, _bg_imp, _bg_imp_sem = replica_mean_sem(_bimp_fldrs, load_rdf, 'g(r)')
+        _br_exp, _bg_exp, _bg_exp_sem = replica_mean_sem(
+            list(iter_explicit_folders(_btype)), load_rdf, 'g(r)')
+        if _br_imp is None or _br_exp is None:
+            continue
+
+        _bmask    = (_br_imp >= 40) & (_br_imp <= 60)
+        _br       = _br_imp[_bmask]
+        _bg_imp_p = _bg_imp[_bmask]
+        _bg_sem_p = _bg_imp_sem[_bmask]
+        _bg_exp_p = np.interp(_br, _br_exp, _bg_exp)
+        _bg_esem  = np.interp(_br, _br_exp, _bg_exp_sem)
+        _bres     = _bg_imp_p - _bg_exp_p
+        _bres_err = np.sqrt(_bg_sem_p**2 + _bg_esem**2)
+
+        _bcol = colors.get(_btype, '#1f77b4')
+        _bls  = _bk_styles.get(_btype, '-')
+
+        _bax_t.plot(_br, _bg_imp_p, color=_bcol, linewidth=1.5, linestyle=_bls,
+                    label=_btype.capitalize())
+        _bax_t.fill_between(_br, _bg_imp_p - _bg_sem_p, _bg_imp_p + _bg_sem_p,
+                            color=_bcol, alpha=0.3)
+        _bax_t.plot(_br, _bg_exp_p, color='black', linewidth=1.5, linestyle=_bls)
+        _bax_t.fill_between(_br, _bg_exp_p - _bg_esem, _bg_exp_p + _bg_esem,
+                            color='black', alpha=0.15)
+
+        _bax_b.plot(_br, _bres, color=_bcol, linewidth=1.0, linestyle=_bls)
+        _bax_b.fill_between(_br, _bres - _bres_err, _bres + _bres_err,
+                            color=_bcol, alpha=0.3)
+
+    _bax_t.axhline(1.0, color='gray', linewidth=0.6, linestyle=':')
+    _bax_t.set_ylabel('g(r)', fontsize=11)
+    _bax_t.set_xlim(40 - 0.4, 60 + 0.4)
+    _bax_t.legend(fontsize=9)
+
+    _bax_b.axhline(0, color='gray', linewidth=0.8, linestyle='--')
+    _bax_b.set_xlabel('r [Å]', fontsize=11)
+    _bax_b.set_ylabel(r'$\Delta g(r)$ (imp-exp)', fontsize=11)
+
+    fig_title(_bfig, 'Best-κ RDF comparison — all systems', fontweight='bold')
+    _bfig.tight_layout()
+    _bfig.savefig(plot_dir / 'best_kappa_comparison_combined.png', dpi=150, bbox_inches='tight')
+    plt.close(_bfig)
+    print("Saved best_kappa_comparison_combined.png")
+
 # ── 3. Pex vs Energy correlation (implicit, all kappas) ──────────────────────
 print("\nPlotting Pex vs Energy...")
 sys_types_sorted = sorted(pressure_data.keys())
@@ -454,27 +518,61 @@ if n_sys > 0:
     plt.close(fig_pe)
     print("Saved pex_vs_energy.png")
 
-# ── 4. Energy convergence panels ─────────────────────────────────────────────
+# ── 4. Energy convergence panels (implicit) ───────────────────────────────────
+_rep_colors = ['tab:blue', 'tab:orange', 'tab:green']
+_step_fmt   = plt.FuncFormatter(lambda x, _: f'{x/1e6:.0f}M' if x >= 1e6 else f'{x/1e3:.0f}k')
+
 for sys_type, items in sorted(folders_by_type.items()):
     items.sort(key=lambda x: x[0])
-    n     = len(items)
-    ncols = min(5, n)
-    nrows = (n + ncols - 1) // ncols
-    fig, axes = plt.subplots(nrows, ncols, figsize=(4 * ncols, 3 * nrows), squeeze=False, sharey=True)
+    groups        = group_by_kappa(items)
+    unique_kappas = list(groups.keys())
 
-    for idx, (kappa, label, folder) in enumerate(items):
-        ax = axes[idx // ncols][idx % ncols]
-        df = load_energy(folder)
-        if df is not None and 'total' in df.columns:
-            ax.plot(df['step'], df['total'], linewidth=0.8, color=colors.get(sys_type, 'k'))
-        ax_title(ax, label, fontsize=8)
-        ax.set_xlabel('MC step', fontsize=7)
-        ax.set_ylabel('E [kT]', fontsize=7)
-        ax.tick_params(labelsize=6)
-        ax.grid(True, alpha=0.3)
+    ncols = 3
+    nrows = 4
+    fig, axes = plt.subplots(nrows, ncols, figsize=(5 * ncols, 4 * nrows), squeeze=False,
+                             sharex='col', sharey=True)
 
-    for idx in range(n, nrows * ncols):
+    for idx, kappa in enumerate(unique_kappas):
+        if idx >= nrows * ncols:
+            break
+        row, col = idx // ncols, idx % ncols
+        ax = axes[row][col]
+
+        for rep_idx, folder in enumerate(groups[kappa]):
+            rep_color = _rep_colors[rep_idx % len(_rep_colors)]
+            df = load_energy(folder)
+            if df is not None and 'total' in df.columns:
+                steps = df['step'].values
+                U     = df['total'].values
+                cumm  = np.cumsum(U) / np.arange(1, len(U) + 1)
+                rep_label = f'replica {rep_idx + 1}' if idx == 0 else '_'
+                ax.plot(steps, U,    color=rep_color, lw=0.6, alpha=0.35)
+                ax.plot(steps, cumm, color=rep_color, lw=1.8, label=rep_label)
+        ax.xaxis.set_major_formatter(_step_fmt)
+        if idx == 0:
+            ax.legend(fontsize=18, loc='lower right')
+        ax.text(0.03, 0.04, rf'$\kappa$ = {kappa:.4f} Å$^{{-1}}$',
+                transform=ax.transAxes, fontsize=17, va='bottom', ha='left',
+                bbox=dict(boxstyle='round,pad=0.2', fc='white', ec='none', alpha=0.7))
+        if col == 0:
+            ax.set_ylabel(r'$U_\mathrm{total}$ [$k_\mathrm{B}T$]', fontsize=19)
+        if row == nrows - 1 or idx + ncols >= len(unique_kappas):
+            ax.set_xlabel('MC step', fontsize=19)
+        ax.tick_params(labelsize=18)
+
+    for idx in range(len(unique_kappas), nrows * ncols):
         axes[idx // ncols][idx % ncols].set_visible(False)
+
+    # Restore tick labels on last visible row per column (hidden axes break sharex)
+    for c in range(ncols):
+        for r in range(nrows - 1, -1, -1):
+            if r * ncols + c < len(unique_kappas):
+                axes[r][c].tick_params(labelbottom=True)
+                break
+    # Restore y tick labels on col 0 (sharey can suppress them)
+    for r in range(nrows):
+        if r * ncols < len(unique_kappas):
+            axes[r][0].tick_params(labelleft=True)
 
     fig_title(fig, f'{sys_type.capitalize()} — energy convergence', fontweight='bold')
     fig.tight_layout()
@@ -482,6 +580,82 @@ for sys_type, items in sorted(folders_by_type.items()):
     fig.savefig(plot_dir / f'{fname}.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
     print(f"Saved {fname}.png")
+
+# ── 4b. Energy convergence — explicit simulations across all system types ─────
+print("\nPlotting explicit energy convergence...")
+
+if list(iter_explicit_folders('isotropic')) or list(iter_explicit_folders('bulk')):
+    from matplotlib.gridspec import GridSpec as _GS
+
+    _efig = plt.figure(figsize=(10, 12))
+    # Two GridSpecs: rows 0-1 tightly spaced, row 2 separated by a larger gap
+    _gs_top = _GS(2, 4, figure=_efig, top=0.95, bottom=0.37, hspace=0.10, wspace=0.25)
+    _gs_bot = _GS(1, 4, figure=_efig, top=0.30, bottom=0.06, wspace=0.25)
+
+    _ax_iso  = _efig.add_subplot(_gs_top[0, 0:2])
+    _ax_dip  = _efig.add_subplot(_gs_top[0, 2:4])
+    _ax_quad = _efig.add_subplot(_gs_top[1, 0:2])
+    _ax_neut = _efig.add_subplot(_gs_top[1, 2:4])
+    _ax_bulk = _efig.add_subplot(_gs_bot[0, 1:3])
+
+    # rows 0–1 share x within columns; bulk has its own x and y
+    _ax_quad.sharex(_ax_iso)
+    _ax_neut.sharex(_ax_dip)
+    # rows 0–1 share y; bulk is independent
+    _ax_dip.sharey(_ax_iso)
+    _ax_quad.sharey(_ax_iso)
+    _ax_neut.sharey(_ax_iso)
+    # hide x tick labels on row 0 (shared with row 1)
+    plt.setp(_ax_iso.get_xticklabels(), visible=False)
+    plt.setp(_ax_dip.get_xticklabels(), visible=False)
+
+    _exp_panel_map = [
+        ('isotropic',   _ax_iso,  True),
+        ('dipolar',     _ax_dip,  False),
+        ('quadrupolar', _ax_quad, False),
+        ('neutral',     _ax_neut, False),
+        ('bulk',        _ax_bulk, False),
+    ]
+
+    for _eidx, (_t, _ax, _first) in enumerate(_exp_panel_map):
+        _exp_fldrs = list(iter_explicit_folders(_t))
+        if not _exp_fldrs:
+            _ax.set_visible(False)
+            continue
+        for _rep_idx, _folder in enumerate(_exp_fldrs):
+            _rep_color = _rep_colors[_rep_idx % len(_rep_colors)]
+            _df = load_energy(_folder)
+            if _df is not None and 'total' in _df.columns:
+                _steps = _df['step'].values
+                _U     = _df['total'].values
+                _cumm  = np.cumsum(_U) / np.arange(1, len(_U) + 1)
+                _ax.plot(_steps, _U,    color=_rep_color, lw=0.6, alpha=0.35)
+                _ax.plot(_steps, _cumm, color=_rep_color, lw=1.8,
+                         label=f'replica {_rep_idx + 1}' if _first else '_')
+        _ax.xaxis.set_major_formatter(_step_fmt)
+        if _first:
+            _ax.legend(fontsize=14, loc='lower right')
+        _ax.text(0.03, 0.04, f'{_t.capitalize()}\n0.1 M NaCl',
+                 transform=_ax.transAxes, fontsize=9, va='bottom', ha='left',
+                 bbox=dict(boxstyle='round,pad=0.2', fc='white', ec='none', alpha=0.7))
+        _ax.text(0.97, 0.97, f'({chr(ord("a") + _eidx)})',
+                 transform=_ax.transAxes, fontsize=12, va='top', ha='right')
+        _ax.tick_params(labelsize=14)
+
+    # y labels and ticks only on left column and bulk
+    for _ax in (_ax_iso, _ax_quad, _ax_bulk):
+        _ax.set_ylabel(r'$U_\mathrm{total}$ [$k_\mathrm{B}T$]', fontsize=15)
+    for _ax in (_ax_dip, _ax_neut):
+        _ax.tick_params(labelleft=False)
+        _ax.set_ylabel('')
+    # x labels only on bottom row of each shared-x column pair + bulk
+    for _ax in (_ax_quad, _ax_neut, _ax_bulk):
+        _ax.set_xlabel('MC step', fontsize=15)
+
+    fig_title(_efig, 'Explicit simulations — energy convergence', fontweight='bold')
+    _efig.savefig(plot_dir / 'energy_convergence_explicit.png', dpi=150, bbox_inches='tight')
+    plt.close(_efig)
+    print("Saved energy_convergence_explicit.png")
 
 # ── pre-compute global RDF y-limit ───────────────────────────────────────────
 _rdf_gmax = 0.0
@@ -598,14 +772,15 @@ if len(_overlay_types) >= 2:
 
     _sys_styles = {'isotropic': ':', 'quadrupolar': '-', 'dipolar': '--'}
 
+    _rdf_xmin, _rdf_xmax, _rdf_pad = 40, 60, 0.4
     for _t in _overlay_types:
         _ls = _sys_styles.get(_t, '-')
         _groups = group_by_kappa(folders_by_type[_t])
         for _kappa, _folders in _groups.items():
             _r, _g_mean, _ = replica_mean_sem(_folders, load_rdf, 'g(r)')
             if _r is not None:
-                ax_comb.plot(_r, _g_mean, linewidth=1.0, alpha=1, linestyle=_ls,
-                             #marker='o', markevery=1, markersize=5,
+                _m = (_r >= _rdf_xmin) & (_r <= _rdf_xmax)
+                ax_comb.plot(_r[_m], _g_mean[_m], linewidth=1.0, alpha=1, linestyle=_ls,
                              color=_cmap_combined(_norm_combined(_kappa)))
 
     # Explicit overlays — same linestyle as their system, black to distinguish from implicit
@@ -613,14 +788,15 @@ if len(_overlay_types) >= 2:
         _ls = _sys_styles.get(_t, '-')
         _r_exp, _g_exp, _ = replica_mean_sem(list(iter_explicit_folders(_t)), load_rdf, 'g(r)')
         if _r_exp is not None:
-            ax_comb.plot(_r_exp, _g_exp, linewidth=1.0, color='black',
+            _m = (_r_exp >= _rdf_xmin) & (_r_exp <= _rdf_xmax)
+            ax_comb.plot(_r_exp[_m], _g_exp[_m], linewidth=1.0, color='black',
                          linestyle=_ls, alpha=0.75,
                          label=f'{_t.capitalize()}')
 
     ax_comb.axhline(1.0, color='gray', linewidth=0.6, linestyle='--')
-    ax_comb.set_xlim(left=40, right=60)
+    ax_comb.set_xlim(_rdf_xmin - _rdf_pad, _rdf_xmax + _rdf_pad)
     ax_comb.xaxis.set_major_locator(plt.MultipleLocator(4))
-    ax_comb.set_ylim(bottom=0, top=rdf_ymax)
+    ax_comb.set_ylim(bottom=-rdf_ymax * 0.04, top=rdf_ymax)
     ax_comb.set_xlabel('r [Å]', fontsize=13)
     ax_comb.set_ylabel('g(r)', fontsize=13)
     ax_comb.tick_params(axis='both', labelsize=12)
@@ -683,7 +859,7 @@ for sys_type, items in sorted(folders_by_type.items()):
             ax.plot(r_exp_mp[col], mean_exp_mp[col], linewidth=1.5, color='black',
                     linestyle='--', alpha=0.7, label='Explicit' if ax_idx == 0 else '_')
             if ax_idx == 0:
-                ax.legend(fontsize=7)
+                ax.legend(fontsize=9, )
         ax.set_ylim(ymin - ypad, ymax + ypad)
         ax.set_xlabel('R [Å]', fontsize=8)
         ax.set_ylabel('Energy [kT]', fontsize=8)
@@ -701,6 +877,96 @@ for sys_type, items in sorted(folders_by_type.items()):
     fig.savefig(plot_dir / f'{fname}.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
     print(f"Saved {fname}.png")
+
+# ── 7b. Combined multipole energy — all systems, shared rainbow colorbar ──────
+print("\nPlotting combined multipole energy decomposition...")
+_me_types  = [t for t in ('isotropic', 'dipolar', 'quadrupolar') if t in folders_by_type]
+_me_styles = {'isotropic': ':', 'dipolar': '--', 'quadrupolar': '-'}
+
+if len(_me_types) >= 2:
+    _me_all_k = []
+    for _t in _me_types:
+        _me_all_k.extend(group_by_kappa(folders_by_type[_t]).keys())
+    _me_kmin = min(_me_all_k)
+    _me_kmax = max(_me_all_k)
+    _me_cmap = plt.get_cmap('rainbow')
+    _me_norm = plt.Normalize(vmin=_me_kmin, vmax=_me_kmax)
+
+    # Cache data and find global y range per energy column
+    _mc, _mce = {}, {}
+    _me_ymin = {col: np.inf  for col in energy_cols}
+    _me_ymax = {col: -np.inf for col in energy_cols}
+    for _t in _me_types:
+        _mg = group_by_kappa(folders_by_type[_t])
+        for _col in energy_cols:
+            for _kappa, _folders in _mg.items():
+                _r, _m, _s = replica_mean_sem(_folders, load_multipole, _col)
+                _mc[(_t, _col, _kappa)] = (_r, _m, _s)
+                if _m is not None:
+                    _me_ymin[_col] = min(_me_ymin[_col], (_m - _s).min())
+                    _me_ymax[_col] = max(_me_ymax[_col], (_m + _s).max())
+            _re, _me2, _ = replica_mean_sem(list(iter_explicit_folders(_t)), load_multipole, _col)
+            _mce[(_t, _col)] = (_re, _me2)
+            if _me2 is not None:
+                _me_ymin[_col] = min(_me_ymin[_col], _me2.min())
+                _me_ymax[_col] = max(_me_ymax[_col], _me2.max())
+
+    if not np.isinf(_me_ymin[energy_cols[0]]):
+        fig_me, axes_me = plt.subplots(2, 3, figsize=(13, 7),
+                                       sharex=True, sharey=False, squeeze=False)
+        fig_me.subplots_adjust(hspace=0.16, wspace=0.35, bottom=0.21)
+
+        for _mi, (_col, _etitle) in enumerate(zip(energy_cols, energy_titles)):
+            _row, _pcol = divmod(_mi, 3)
+            _ax = axes_me[_row][_pcol]
+
+            _me_xmin, _me_xmax, _me_xpad = 41, 60, 0.4
+            for _t in _me_types:
+                _ls = _me_styles.get(_t, '-')
+                for _kappa in group_by_kappa(folders_by_type[_t]):
+                    _r, _m, _ = _mc[(_t, _col, _kappa)]
+                    if _r is not None:
+                        _xmask = (_r >= _me_xmin) & (_r <= _me_xmax)
+                        _ax.plot(_r[_xmask], _m[_xmask], linewidth=1.5, alpha=1, linestyle=_ls,
+                                 color=_me_cmap(_me_norm(_kappa)))
+
+            for _t in _me_types:
+                _ls = _me_styles.get(_t, '-')
+                _re, _me2 = _mce[(_t, _col)]
+                if _re is not None:
+                    _xmask = (_re >= _me_xmin) & (_re <= _me_xmax)
+                    _ax.plot(_re[_xmask], _me2[_xmask], linewidth=1.5, color='black',
+                             linestyle=_ls, alpha=1,
+                             label=_t.capitalize() if _mi == 0 else '_')
+
+            _ypad = (_me_ymax[_col] - _me_ymin[_col]) * 0.05
+            _ax.set_ylim(_me_ymin[_col] - _ypad, _me_ymax[_col] + _ypad)
+            _ax.set_xlim(_me_xmin - _me_xpad, _me_xmax + _me_xpad)
+            _ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=4))
+            _ax.tick_params(axis='both', labelsize=15)
+            _ax.text(0.15, 0.05, f'({chr(ord("a") + _mi)})', transform=_ax.transAxes,
+                     fontsize=12, ha='right', va='bottom')
+            if _row == 1:
+                _ax.set_xlabel('R [Å]', fontsize=16)
+            _ax.set_ylabel(_etitle + ' [k$_\mathrm{B}$T]', fontsize=16)
+
+        axes_me[0][0].legend(fontsize=13)
+        axes_me[0][0].set_xticks(range(42, 61, 4))
+
+        _sm_me = plt.cm.ScalarMappable(cmap=_me_cmap, norm=_me_norm)
+        _sm_me.set_array([])
+        _pl_me = axes_me[1][0].get_position()
+        _pr_me = axes_me[1][2].get_position()
+        _cax_me = fig_me.add_axes([_pl_me.x0, 0.06, _pr_me.x1 - _pl_me.x0, 0.03])
+        _cb_me = fig_me.colorbar(_sm_me, cax=_cax_me, orientation='horizontal')
+        _cb_me.set_label(r'$\kappa$ [Å$^{-1}$]', fontsize=16)
+        _cb_me.ax.tick_params(labelsize=15)
+
+        fig_title(fig_me, 'Combined multipole energy decomposition — all systems', fontweight='bold')
+        fig_me.align_ylabels(axes_me.flatten())
+        fig_me.savefig(plot_dir / 'multipole_energy_combined.png', dpi=150, bbox_inches='tight')
+        plt.close(fig_me)
+        print("Saved multipole_energy_combined.png")
 
 # ── 8. Orientational correlations ─────────────────────────────────────────────
 corr_cols   = ['mucorr', 'long', 'quadcorr_norm', 'p2']
@@ -809,30 +1075,33 @@ if len(_corr_types) >= 2:
 
         fig_cc, axes_cc = plt.subplots(2, 2, figsize=(9, 7),
                                        sharex=True, sharey='row', squeeze=False)
-        fig_cc.subplots_adjust(hspace=0.16, wspace=0.12, bottom=0.17)
+        fig_cc.subplots_adjust(hspace=0.16, wspace=0.12, bottom=0.19)
 
         for _ci, (_col, _clabel) in enumerate(zip(corr_cols, corr_labels)):
             _row, _pcol = divmod(_ci, 2)
             _ax = axes_cc[_row][_pcol]
 
+            _cr_xmin, _cr_xmax, _cr_xpad = 41, 59, 0.4
             for _t in _corr_types:
                 _ls = _corr_styles.get(_t, '-')
                 for _kappa in group_by_kappa(folders_by_type[_t]):
                     _r, _m, _ = _cc[(_t, _col, _kappa)]
                     if _r is not None:
-                        _ax.plot(_r, _m, linewidth=1, alpha=1, linestyle=_ls,
+                        _xmask = (_r >= _cr_xmin) & (_r <= _cr_xmax)
+                        _ax.plot(_r[_xmask], _m[_xmask], linewidth=1, alpha=1, linestyle=_ls,
                                  color=_corr_cmap(_corr_norm(_kappa)))
 
             for _t in _corr_types:
                 _ls = _corr_styles.get(_t, '-')
                 _re, _me = _ce[(_t, _col)]
                 if _re is not None:
-                    _ax.plot(_re, _me, linewidth=1, color='black',
+                    _xmask = (_re >= _cr_xmin) & (_re <= _cr_xmax)
+                    _ax.plot(_re[_xmask], _me[_xmask], linewidth=1, color='black',
                              linestyle=_ls, alpha=1, label=_t.capitalize())
 
             _ax.axhline(0, color='gray', linewidth=1, linestyle='--')
             _ax.set_ylim((-0.1, 0.28) if _row == 0 else (-0.28, 0.1))
-            _ax.set_xlim(41, 59)
+            _ax.set_xlim(_cr_xmin - _cr_xpad, _cr_xmax + _cr_xpad)
             _ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:.1f}'))
             _ax.tick_params(axis='both', labelsize=12)
             #_ax.grid(True, alpha=0.2)

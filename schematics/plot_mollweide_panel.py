@@ -104,11 +104,13 @@ def process_file(path, lam, radius, resolution):
     p_hat  = p_vec / p_mag
 
     evals, evecs = np.linalg.eigh(Q_ten)
-    idx    = np.argmax(np.abs(evals))
-    q1_hat = evecs[:, idx]                   # principal quadrupole axis
-    q_frob = np.linalg.norm(Q_ten, "fro")    # Frobenius norm, e·Å²
+    idx         = np.argmax(np.abs(evals))
+    q1_hat      = evecs[:, idx]               # principal (prolate) quadrupole axis
+    idx_obl     = np.argmin(evals)
+    q_oblate    = evecs[:, idx_obl]           # oblate axis (most negative eigenvalue)
+    q_frob      = np.linalg.norm(Q_ten, "fro")
 
-    return lon_g, lat_g, scd, R_nm, float(charges.sum()), p_hat, p_mag, q1_hat, q_frob
+    return lon_g, lat_g, scd, R_nm, float(charges.sum()), p_hat, p_mag, q1_hat, q_oblate, q_frob
 
 
 def dipole_great_circle(p_hat, n=600):
@@ -131,23 +133,36 @@ def dipole_great_circle(p_hat, n=600):
 
 
 def draw_dipole_equator(ax, p_hat, p_mag):
-    """Overlay dipole equatorial great circle and mu label on a Mollweide axes."""
+    """Overlay dipole equatorial great circle, pole markers, and mu label."""
     lon, lat = dipole_great_circle(p_hat)
     ax.plot(lon, lat, color="k", lw=1.2, ls="--", zorder=5)
+
+    lon1 = np.arctan2(p_hat[1], p_hat[0])
+    lat1 = np.arcsin(np.clip(p_hat[2], -1.0, 1.0))
+    lon2 = lon1 - np.pi if lon1 > 0 else lon1 + np.pi
+    lat2 = -lat1
+    ax.plot(lon1, lat1, marker="s", ms=6, mfc="white", mec="k", mew=1.0, ls="none", zorder=7)
+    ax.plot(lon2, lat2, marker="s", ms=6, mfc="white", mec="k", mew=1.0, ls="none", zorder=7)
 
     text = fr"$\mu\!=\!{p_mag:.1f}\ e\,\mathrm{{\AA}}$"
     ax.text(-29.0, -1.55, text, fontsize=9, ha="center", va="center", color="k", zorder=6)
 
 
-def draw_quadrupole_axis(ax, q1_hat, q_frob):
-    """Draw solid antipodal triangle markers at the principal quadrupole axis poles."""
+def draw_quadrupole_axis(ax, q1_hat, q_oblate, q_frob):
+    """Draw triangle markers at prolate (white) and oblate (black) quadrupole poles."""
     lon1 = np.arctan2(q1_hat[1], q1_hat[0])
     lat1 = np.arcsin(np.clip(q1_hat[2], -1.0, 1.0))
     lon2 = lon1 - np.pi if lon1 > 0 else lon1 + np.pi
     lat2 = -lat1
-
     ax.plot(lon1, lat1, marker="^", ms=6, mfc="white", mec="k", mew=1.0, ls="none", zorder=7)
     ax.plot(lon2, lat2, marker="v", ms=6, mfc="white", mec="k", mew=1.0, ls="none", zorder=7)
+
+    lon3 = np.arctan2(q_oblate[1], q_oblate[0])
+    lat3 = np.arcsin(np.clip(q_oblate[2], -1.0, 1.0))
+    lon4 = lon3 - np.pi if lon3 > 0 else lon3 + np.pi
+    lat4 = -lat3
+    ax.plot(lon3, lat3, marker="^", ms=6, mfc="black", mec="k", mew=1.0, ls="none", zorder=7)
+    ax.plot(lon4, lat4, marker="v", ms=6, mfc="black", mec="k", mew=1.0, ls="none", zorder=7)
 
     text = fr"$\Theta\!=\!{q_frob:.1f}\ e\,\mathrm{{\AA}}^2$"
     ax.text(29.0, -1.55, text, fontsize=9, ha="center", va="center", color="k", zorder=6)
@@ -262,10 +277,10 @@ def main():
     # ── compute SCD for every file ────────────────────────────────────────────
     results = []
     for path, label in zip(args.xyz, panel_labels):
-        lon_g, lat_g, scd, R_nm, net_q, p_hat, p_mag, q1_hat, q_frob = process_file(
+        lon_g, lat_g, scd, R_nm, net_q, p_hat, p_mag, q1_hat, q_oblate, q_frob = process_file(
             path, args.lam, args.radius, args.resolution
         )
-        results.append((label, lon_g, lat_g, scd, p_hat, p_mag, q1_hat, q_frob))
+        results.append((label, lon_g, lat_g, scd, p_hat, p_mag, q1_hat, q_oblate, q_frob))
         print(f"{label}: R = {R_nm:.3f} nm | net charge = {net_q:.0f} e | mu = {p_mag:.2f} e·Å | Theta_F = {q_frob:.2f} e·Å²")
 
     # ── shared colour scale ───────────────────────────────────────────────────
@@ -288,7 +303,7 @@ def main():
 
     # ── plot data ─────────────────────────────────────────────────────────────
     mesh_ref = None
-    for ax, (label, lon_g, lat_g, scd, p_hat, p_mag, q1_hat, q_frob) in zip(axes, results):
+    for ax, (label, lon_g, lat_g, scd, p_hat, p_mag, q1_hat, q_oblate, q_frob) in zip(axes, results):
         mesh = ax.pcolormesh(
             lon_g, lat_g, scd,
             cmap="RdBu_r", norm=norm, shading="auto", rasterized=True,
@@ -298,7 +313,7 @@ def main():
         if not args.no_dipole:
             draw_dipole_equator(ax, p_hat, p_mag)
         if not args.no_quadrupole:
-            draw_quadrupole_axis(ax, q1_hat, q_frob)
+            draw_quadrupole_axis(ax, q1_hat, q_oblate, q_frob)
 
     # ── shared colourbar below all panels ────────────────────────────────────
     fig.canvas.draw()

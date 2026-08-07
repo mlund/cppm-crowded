@@ -189,7 +189,7 @@ def draw_sphere(ax, theta_g, phi_g, rho, r_base, bump_frac, cmap, norm,
     ax.set_box_aspect([1, 1, 1])
     ax.set_axis_off()
     if title:
-        ax.set_title(title, fontsize=11, pad=2)
+        ax.set_title(title, fontsize=15, pad=2)
 
 
 # ── Mollweide hillshading ─────────────────────────────────────────────────────
@@ -270,9 +270,9 @@ def draw_mollweide(ax, theta_1d, phi_1d, rho_map, cmap, norm,
     ax.set_axis_off()
 
     if title:
-        ax.text(0.03, 0.95, title, transform=ax.transAxes, fontsize=12,
-                va="top", ha="left",
-                bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.75))
+        ax.text(0.03, 0.95, title, transform=ax.transAxes, fontsize=15,
+                va="top", ha="left",)
+                #bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.75))
 
 
 # ── Figure assembly ───────────────────────────────────────────────────────────
@@ -297,13 +297,18 @@ def make_figure(results, args):
 
     is_3d = (args.projection == "sphere")
 
+    # Choose 1×2 or 2×2 grid depending on panel count
+    ncols = 2
+    nrows = 1 if N <= 2 else 2
+
     # Figure size: Mollweide panels are 2:1 wide, spheres are square
     pw, ph = (4.5, 4.5) if is_3d else (5.5, 3.2)
-    CBAR_FRAC = 0.17          # fraction of figure height reserved for colorbar + label
-    fig = plt.figure(figsize=(pw * 2, ph * 2 + 0.6), dpi=args.dpi)
+    fig_h = ph * nrows + 0.6
+    CBAR_FRAC = 1.2 / fig_h   # fixed ~1.2 inch absolute strip for colorbar + label
+    fig = plt.figure(figsize=(pw * ncols, fig_h), dpi=args.dpi)
 
     gs = gridspec.GridSpec(
-        2, 2,
+        nrows, ncols,
         figure=fig,
         hspace=0.05 if not is_3d else 0.0,
         wspace=0.05,
@@ -317,7 +322,7 @@ def make_figure(results, args):
     letters = "abcdefgh"
     axes = []
     for i, res in enumerate(results):
-        row, col = divmod(i, 2)
+        row, col = divmod(i, ncols)
         ax = fig.add_subplot(gs[row, col], **proj_kw)
         axes.append(ax)
         panel_title = fr"$\mathbf{{({letters[i]})}}$ {res['label']}"
@@ -333,9 +338,9 @@ def make_figure(results, args):
                            vert_exag=args.vert_exag,
                            smooth_sigma=args.smooth, title=panel_title)
 
-    # Hide unused slots (if fewer than 4 species)
-    for i in range(N, 4):
-        row, col = divmod(i, 2)
+    # Hide unused slots in the last row (only relevant for 2×2 with 3 panels)
+    for i in range(N, nrows * ncols):
+        row, col = divmod(i, ncols)
         fig.add_subplot(gs[row, col]).set_visible(False)
 
     # Shared colorbar — span the full width of the panel grid.
@@ -369,10 +374,10 @@ def make_figure(results, args):
     cbar.set_ticks(tick_vals)
     cbar.set_ticklabels(
         [f"{v:.0f}" if v == int(v) else f"{v:.1f}" for v in tick_vals],
-        fontsize=12,
+        fontsize=15,
     )
-    cbar.set_label(CBAR_LABELS[args.mode], fontsize=13, labelpad=4)
-    cbar.ax.tick_params(axis="x", length=4, direction="out", width=0.8)
+    cbar.set_label(CBAR_LABELS[args.mode], fontsize=17, labelpad=4)
+    cbar.ax.tick_params(axis="x", length=4, direction="out", width=0.8, labelsize=15)
     for spine in ["top", "left", "right"]:
         cbar.ax.spines[spine].set_visible(False)
     cbar.ax.spines["bottom"].set_linewidth(0.8)
@@ -459,7 +464,7 @@ def main():
                          "theta_1d": theta, "phi_1d": phi,
                          "rho": rho})
 
-    plt.rcParams.update({"font.family": "sans-serif", "font.size": 12})
+    plt.rcParams.update({"font.family": "sans-serif", "font.size": 16})
     fig = make_figure(results, args)
 
     # Resolve output path: explicit -o flag wins; else use directory basename;
