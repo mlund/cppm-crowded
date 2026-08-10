@@ -4,10 +4,10 @@
 #SBATCH -A lu2026-2-71
 
 # Walltime HH:MM:SS
-#SBATCH -t 08:00:00
+#SBATCH -t 149:59:00
 
 # Job name and output files
-#SBATCH -J cppm_sweep_quadrupolar
+#SBATCH -J cppm_sweep_exp_bulk
 #SBATCH -o %x_%j.out
 #SBATCH -e %x_%j.err
 
