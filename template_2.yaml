@@ -81,13 +81,10 @@ analysis:
     file: energy.csv.gz
     frequency: !Every 100
 {% if not is_equilibration %}
-  - !Multipole
-    selection: "molecule macroion"
-    frequency: !Every 10
   - !RadialDistribution
     selections: ["atomtype Na", "atomtype Cl"]
     file: rdf-nacl.csv
-    resolution: 0.25
+    resolution: 0.15
     frequency: !Every 10
   - !CollectiveVariable
     property: molarity
@@ -188,33 +185,33 @@ analysis:
     selections: ["molecule macroion", "molecule macroion"]
     use_com: true
     file: rdf.csv
-    resolution: 0.5
+    resolution: 0.25
     frequency: !Every 10
 {% if kappa == 0 %}
   - !RadialDistribution
     selections: ["atomtype Na", "atomtype NP"]
     file: rdf-na-np.csv
-    resolution: 0.25
+    resolution: 0.15
     frequency: !Every 10
   - !RadialDistribution
     selections: ["atomtype Cl", "atomtype PP"]
     file: rdf-cl-pp.csv
-    resolution: 0.25
+    resolution: 0.15
     frequency: !Every 10
   - !RadialDistribution
     selections: ["atomtype Cl", "atomtype MP"]
     file: rdf-cl-mp.csv
-    resolution: 0.25
+    resolution: 0.15
     frequency: !Every 10
   - !RadialDistribution
     selections: ["atomtype Na", "atomtype MP"]
     file: rdf-na-mp.csv
-    resolution: 0.25
+    resolution: 0.15
     frequency: !Every 10
   - !RadialDistribution
     selections: ["atomtype Na", "atomtype Cl"]
     file: rdf-na-cl.csv
-    resolution: 0.25
+    resolution: 0.15
     frequency: !Every 10
 {% endif %}
   - !Multipole
@@ -223,7 +220,7 @@ analysis:
   - !MultipoleDistribution
     selections: ["molecule macroion", "molecule macroion"]
     file: multipole_dist.csv
-    resolution: 0.5
+    resolution: 0.25
     frequency: !Every 10
 {% if kappa == 0 %}
   - !CollectiveVariable
@@ -301,8 +298,8 @@ propagate:
   collections:
     - !Stochastic
       moves:
-        - !TranslateMolecule {molecule: macroion, dp: 5.0, repeat: {{ n_macroions }}}
-        - !RotateMolecule    {molecule: macroion, dprot: 0.5,  repeat: {{ n_macroions }}}
+        - !TranslateMolecule {molecule: macroion, dp: 4.0, repeat: {{ n_macroions }}}
+        - !RotateMolecule    {molecule: macroion, dprot: 0.4,  repeat: {{ n_macroions }}}
 {% if kappa == 0 %}
     - !Deterministic
       # Preferential sampling: pick ions near a macroion's bounding
@@ -314,7 +311,7 @@ propagate:
         - !TranslateAtom
           molecule: Cations
           atom: Na
-          dp: 12.0
+          dp: 14.0
           repeat: {{ n_Cations }}
           preferential:
             reference: "molecule macroion"
@@ -323,7 +320,7 @@ propagate:
         - !TranslateAtom
           molecule: Anions
           atom: Cl
-          dp: 12.0
+          dp: 14.0
           repeat: {{ n_Anions }}
           preferential:
             reference: "molecule macroion"
