@@ -15,7 +15,19 @@ parser = argparse.ArgumentParser(description='Plot kappa analysis results.')
 parser.add_argument('path', help='Path to directory containing implicit/ and explicit/ subdirectories')
 parser.add_argument('plots', help='Path to the output folder for plots')
 parser.add_argument('--no-titles', action='store_true', help='Suppress all plot titles and suptitles')
+parser.add_argument('--rdf-rmax', type=float, default=None,
+                    help='Upper bound of r [Å] used when computing the RMSD for best-kappa selection (default: no limit)')
+parser.add_argument('--peak', action='store_true',
+                    help='Select best kappa by matching the g(r) peak height to explicit, instead of full-range RMSD')
+parser.add_argument('--np-radius', type=float, default=20.0,
+                    help='NP radius R [Å] (default: 20 = sigma_MP/2). Sets the CPPM–CPPM lower r '
+                         'limit to 2R (the MP contact diameter = 40 Å).')
+parser.add_argument('--ion-radius', type=float, default=2.0,
+                    help='Ion radius [Å] (default: 2 = sigma_ion/2). Combined with --np-radius to '
+                         'give R_eff = R + r_ion used in the ion-pair RDF geometric correction.')
 args = parser.parse_args()
+r_np  = args.np_radius
+r_eff = args.np_radius + args.ion_radius  # effective exclusion radius for ion-pair RDF correction
 
 
 def ax_title(ax, text, **kw):
@@ -223,37 +235,45 @@ def find_best_kappa_rdf(folders_by_type):
             continue
 
         groups = group_by_kappa(items)
-        kappa_list, rmsd_list = [], []
+        kappa_list, score_list = [], []
+
+        peak_exp = float(g_exp.max()) if args.peak else None
 
         for kappa, folders in groups.items():
             r_imp, g_imp, _ = replica_mean_sem(folders, load_rdf, 'g(r)')
             if r_imp is None:
                 continue
-            mask    = r_imp >= 40
-            r_plot  = r_imp[mask]
-            g_imp_p = g_imp[mask]
-            g_exp_p = np.interp(r_plot, r_exp, g_exp)
-            rmsd    = np.sqrt(np.mean((g_imp_p - g_exp_p) ** 2))
+            if args.peak:
+                score = abs(float(g_imp.max()) - peak_exp)
+            else:
+                mask    = r_imp >= 2 * r_np
+                if args.rdf_rmax is not None:
+                    mask &= r_imp <= args.rdf_rmax
+                r_plot  = r_imp[mask]
+                g_imp_p = g_imp[mask]
+                g_exp_p = np.interp(r_plot, r_exp, g_exp)
+                score   = np.sqrt(np.mean((g_imp_p - g_exp_p) ** 2))
             kappa_list.append(kappa)
-            rmsd_list.append(rmsd)
+            score_list.append(score)
 
         if not kappa_list:
             continue
 
         kappa_arr = np.array(kappa_list)
-        rmsd_arr  = np.array(rmsd_list)
-        best_idx  = int(np.argmin(rmsd_arr))
+        score_arr = np.array(score_list)
+        best_idx  = int(np.argmin(score_arr))
         best_kappas[sys_type] = kappa_arr[best_idx]
 
+        metric_label = 'peak |Δg|' if args.peak else 'RDF RMSD'
         try:
-            f_rmsd       = interp1d(kappa_arr, rmsd_arr, kind='cubic')
+            f_score      = interp1d(kappa_arr, score_arr, kind='cubic')
             k_fine       = np.linspace(kappa_arr[0], kappa_arr[-1], 10000)
-            kappa_interp = k_fine[int(np.argmin(f_rmsd(k_fine)))]
+            kappa_interp = k_fine[int(np.argmin(f_score(k_fine)))]
             interp_kappas[sys_type] = kappa_interp
-            print(f"  {sys_type}: best κ (RDF RMSD) discrete={kappa_arr[best_idx]:.4f}  "
-                  f"interpolated={kappa_interp:.4f}  RMSD={rmsd_arr[best_idx]:.5f}")
+            print(f"  {sys_type}: best κ ({metric_label}) discrete κ⁻¹={1/kappa_arr[best_idx]:.2f} Å  "
+                  f"interpolated κ⁻¹={1/kappa_interp:.2f} Å  score={score_arr[best_idx]:.5f}")
         except Exception as exc:
-            print(f"  Warning: RMSD interpolation failed for {sys_type}: {exc}")
+            print(f"  Warning: score interpolation failed for {sys_type}: {exc}")
 
     return best_kappas, interp_kappas
 
@@ -266,7 +286,7 @@ explicit_pressure = parse_explicit()
 
 folders_by_type = defaultdict(list)
 for sys_type, kappa, replica, folder in iter_sim_folders():
-    label = f'κ={kappa:.4f}' if replica == 1 else f'κ={kappa:.4f} (r{replica})'
+    label = f'κ⁻¹={1/kappa:.1f} Å' if replica == 1 else f'κ⁻¹={1/kappa:.1f} Å (r{replica})'
     folders_by_type[sys_type].append((kappa, label, folder))
 
 print("\nFinding best kappa from RDF vs explicit...")
@@ -281,10 +301,11 @@ if len(pressure_data) == 1:
 for ax, sys_type in zip(axes, sorted(pressure_data)):
     rows   = pressure_data[sys_type]
     kappas = np.array([r[0] for r in rows])
+    kappas_inv = 1.0 / kappas
     means  = np.array([r[1] for r in rows])
     errs   = np.array([r[2] for r in rows])
 
-    ax.errorbar(kappas, means, yerr=errs, fmt='o-', color=colors.get(sys_type, 'k'),
+    ax.errorbar(kappas_inv, means, yerr=errs, fmt='o-', color=colors.get(sys_type, 'k'),
                 capsize=4, linewidth=1.5, markersize=5, label='Implicit')
 
     if sys_type in explicit_pressure:
@@ -294,15 +315,15 @@ for ax, sys_type in zip(axes, sorted(pressure_data)):
 
     if sys_type in best_kappas:
         bk = best_kappas[sys_type]
-        ax.axvline(bk, color='red', linewidth=1.5, linestyle='--',
-                   label=f'Best κ={bk:.4f}')
+        ax.axvline(1/bk, color='red', linewidth=1.5, linestyle='--',
+                   label=f'Best κ⁻¹={1/bk:.1f} Å')
         if sys_type in interp_kappas:
             ik = interp_kappas[sys_type]
-            ax.axvline(ik, color='red', linewidth=1.0, linestyle=':', alpha=0.6,
-                       label=f'Interp κ={ik:.4f}')
+            ax.axvline(1/ik, color='red', linewidth=1.0, linestyle=':', alpha=0.6,
+                       label=f'Interp κ⁻¹={1/ik:.1f} Å')
 
     ax.legend(fontsize=7)
-    ax.set_xlabel(r'$\kappa$ [Å$^{-1}$]')
+    ax.set_xlabel(r'$\kappa^{-1}$ [Å]')
     ax.set_ylabel(r'$P_{ex}$ [mM]')
     ax_title(ax, sys_type.capitalize())
     ax.grid(True, alpha=0.3)
@@ -319,7 +340,7 @@ for sys_type, best_kappa in best_kappas.items():
     groups      = group_by_kappa(folders_by_type[sys_type])
     imp_folders = groups.get(best_kappa, [])
     if not imp_folders:
-        print(f"  Warning: no folders for {sys_type} at κ={best_kappa:.4f}")
+        print(f"  Warning: no folders for {sys_type} at κ⁻¹={1/best_kappa:.2f} Å")
         continue
 
     r_imp, g_imp, g_imp_sem = replica_mean_sem(imp_folders, load_rdf, 'g(r)')
@@ -329,7 +350,7 @@ for sys_type, best_kappa in best_kappas.items():
         print(f"  Warning: missing RDF data for {sys_type} comparison")
         continue
 
-    mask     = r_imp >= 40
+    mask     = r_imp >= 2 * r_np
     r_plot   = r_imp[mask]
     g_imp_p  = g_imp[mask]
     g_sem_p  = g_imp_sem[mask]
@@ -346,7 +367,7 @@ for sys_type, best_kappa in best_kappas.items():
     )
 
     ax_top.plot(r_plot, g_imp_p, color=color_imp, linewidth=1.5,
-                label=f'Implicit κ={best_kappa:.4f}')
+                label=f'Implicit κ⁻¹={1/best_kappa:.1f} Å')
     ax_top.fill_between(r_plot, g_imp_p - g_sem_p, g_imp_p + g_sem_p,
                         color=color_imp, alpha=0.3)
     ax_top.plot(r_plot, g_exp_p, color='black', linewidth=1.5, linestyle='--',
@@ -358,9 +379,9 @@ for sys_type, best_kappa in best_kappas.items():
     ax_top.legend(fontsize=8)
     ax_top.grid(True, alpha=0.3)
 
-    title = f'{sys_type.capitalize()} — best κ={best_kappa:.4f}'
+    title = f'{sys_type.capitalize()} — best κ⁻¹={1/best_kappa:.1f} Å'
     if sys_type in interp_kappas:
-        title += f'  (interpolated κ={interp_kappas[sys_type]:.4f})'
+        title += f'  (interpolated κ⁻¹={1/interp_kappas[sys_type]:.1f} Å)'
     ax_title(ax_top, title, fontweight='bold')
 
     ax_bot.plot(r_plot, residuals, color=color_imp, linewidth=1.0)
@@ -402,7 +423,7 @@ if _bk_order:
         if _br_imp is None or _br_exp is None:
             continue
 
-        _bmask    = (_br_imp >= 40) & (_br_imp <= 60)
+        _bmask    = (_br_imp >= 2 * r_np) & (_br_imp <= 60)
         _br       = _br_imp[_bmask]
         _bg_imp_p = _bg_imp[_bmask]
         _bg_sem_p = _bg_imp_sem[_bmask]
@@ -428,7 +449,7 @@ if _bk_order:
 
     _bax_t.axhline(1.0, color='gray', linewidth=0.6, linestyle=':')
     _bax_t.set_ylabel('g(r)', fontsize=11)
-    _bax_t.set_xlim(40 - 0.4, 60 + 0.4)
+    _bax_t.set_xlim(2 * r_np - 0.4, 60 + 0.4)
     _bax_t.legend(fontsize=9)
 
     _bax_b.axhline(0, color='gray', linewidth=0.8, linestyle='--')
@@ -496,7 +517,7 @@ if n_sys > 0:
             if bk in pex_dict and bk in {k: None for k in kappa_pts}:
                 bidx = kappa_pts.index(bk)
                 ax_pe.scatter([e_pts[bidx]], [pex_pts[bidx]], s=120, facecolors='none',
-                              edgecolors='red', linewidths=2, zorder=6, label=f'Best κ={bk:.4f}')
+                              edgecolors='red', linewidths=2, zorder=6, label=f'Best κ⁻¹={1/bk:.1f} Å')
                 ax_pe.legend(fontsize=8)
 
         x_line = np.linspace(e_arr.min(), e_arr.max(), 200)
@@ -510,7 +531,8 @@ if n_sys > 0:
         ax_pe.grid(True, alpha=0.3)
 
         cb = fig_pe.colorbar(sc, ax=ax_pe)
-        cb.set_label(r'$\kappa$ [Å$^{-1}$]')
+        cb.set_label(r'$\kappa^{-1}$ [Å]')
+        cb.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{1/x:.1f}'))
 
     fig_title(fig_pe, r'$P_{ex}$ vs mean energy — implicit simulations', fontweight='bold')
     fig_pe.tight_layout()
@@ -551,7 +573,7 @@ for sys_type, items in sorted(folders_by_type.items()):
         ax.xaxis.set_major_formatter(_step_fmt)
         if idx == 0:
             ax.legend(fontsize=18, loc='lower right')
-        ax.text(0.03, 0.04, rf'$\kappa$ = {kappa:.4f} Å$^{{-1}}$',
+        ax.text(0.03, 0.04, rf'$\kappa^{{-1}}$ = {1/kappa:.1f} Å',
                 transform=ax.transAxes, fontsize=17, va='bottom', ha='left',
                 bbox=dict(boxstyle='round,pad=0.2', fc='white', ec='none', alpha=0.7))
         if col == 0:
@@ -693,9 +715,9 @@ for sys_type, items in sorted(folders_by_type.items()):
                 g_exp_interp = np.interp(r, r_exp, g_exp)
                 ax.plot(r, g_exp_interp, linewidth=1.0, color='black', linestyle='--', alpha=0.5)
             ax.axhline(1.0, color='gray', linewidth=0.6, linestyle='--')
-            ax.set_xlim(left=40)
+            ax.set_xlim(left=2 * r_np)
             ax.set_ylim(bottom=0, top=rdf_ymax)
-        ax_title(ax, f'κ={kappa:.4f} (n={len(folders)})', fontsize=8)
+        ax_title(ax, f'κ⁻¹={1/kappa:.1f} Å (n={len(folders)})', fontsize=8)
         ax.set_xlabel('r [Å]', fontsize=7)
         ax.set_ylabel('g(r)', fontsize=7)
         ax.tick_params(labelsize=6)
@@ -736,7 +758,7 @@ for sys_type, items in sorted(folders_by_type.items()):
         ax.legend(fontsize=8)
 
     ax.axhline(1.0, color='gray', linewidth=0.8, linestyle='--')
-    ax.set_xlim(left=40)
+    ax.set_xlim(left=r_np)
     ax.set_ylim(bottom=0, top=rdf_ymax)
     ax.set_xlabel('r [Å]')
     ax.set_ylabel('g(r)')
@@ -745,7 +767,9 @@ for sys_type, items in sorted(folders_by_type.items()):
 
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
-    fig.colorbar(sm, ax=ax).set_label(r'$\kappa$ [Å$^{-1}$]')
+    _cb6 = fig.colorbar(sm, ax=ax)
+    _cb6.set_label(r'$\kappa^{-1}$ [Å]')
+    _cb6.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{1/x:.1f}'))
 
     fig.tight_layout()
     fname = f'rdf_overlay_{sys_type}'
@@ -755,7 +779,7 @@ for sys_type, items in sorted(folders_by_type.items()):
 
 # ── 6b. RDF overlay — all systems on one plot with shared rainbow colorbar ────
 print("\nPlotting combined RDF overlay (all systems, shared colorbar)...")
-_overlay_types = [t for t in ('isotropic', 'dipolar', 'quadrupolar') if t in folders_by_type]
+_overlay_types = [t for t in ('isotropic', 'dipolar', 'quadrupolar', 'neutral') if t in folders_by_type]
 
 if len(_overlay_types) >= 2:
     # Collect global kappa range across all target systems
@@ -770,9 +794,9 @@ if len(_overlay_types) >= 2:
 
     fig_comb, ax_comb = plt.subplots(figsize=(7, 5))
 
-    _sys_styles = {'isotropic': ':', 'quadrupolar': '-', 'dipolar': '--'}
+    _sys_styles = {'isotropic': ':', 'quadrupolar': '-', 'dipolar': '--', 'neutral': '-.'}
 
-    _rdf_xmin, _rdf_xmax, _rdf_pad = 40, 60, 0.4
+    _rdf_xmin, _rdf_xmax, _rdf_pad = 2 * r_np, 60, 0.4
     for _t in _overlay_types:
         _ls = _sys_styles.get(_t, '-')
         _groups = group_by_kappa(folders_by_type[_t])
@@ -800,20 +824,126 @@ if len(_overlay_types) >= 2:
     ax_comb.set_xlabel('r [Å]', fontsize=13)
     ax_comb.set_ylabel('g(r)', fontsize=13)
     ax_comb.tick_params(axis='both', labelsize=12)
-    ax_title(ax_comb, 'RDF overlay — isotropic, quadrupolar & dipolar')
+    ax_title(ax_comb, 'RDF overlay — all systems')
     ax_comb.legend(fontsize=11)
     ax_comb.grid(False)
 
     _sm_comb = plt.cm.ScalarMappable(cmap=_cmap_combined, norm=_norm_combined)
     _sm_comb.set_array([])
     _cb_comb = fig_comb.colorbar(_sm_comb, ax=ax_comb)
-    _cb_comb.set_label(r'$\kappa$ [Å$^{-1}$]', fontsize=13)
+    _cb_comb.set_label(r'$\kappa^{-1}$ [Å]', fontsize=13)
     _cb_comb.ax.tick_params(labelsize=12)
+    _cb_comb.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{1/x:.1f}'))
 
     fig_comb.tight_layout()
     fig_comb.savefig(plot_dir / 'rdf_overlay_combined.png', dpi=150, bbox_inches='tight')
     plt.close(fig_comb)
     print("Saved rdf_overlay_combined.png")
+
+# ── 6c. Ion-pair RDF overlays — explicit simulations, all system types ────────
+print("\nPlotting ion-pair RDF overlays (explicit)...")
+
+_ion_rdf_specs = [
+    ('rdf-na-cl.csv', 'Na–Cl',  'rdf_overlay_na-cl'),
+    ('rdf-na-np.csv', 'Na–NP',  'rdf_overlay_na-np'),
+    ('rdf-cl-pp.csv', 'Cl–PP',  'rdf_overlay_cl-pp'),
+]
+_ion_sys_order  = [t for t in ('isotropic', 'dipolar', 'quadrupolar', 'neutral') if t in folders_by_type]
+_ion_sys_styles = {'isotropic': ':', 'dipolar': '--', 'quadrupolar': '-', 'neutral': '-.'}
+
+for _ion_fname, _ion_label, _ion_outname in _ion_rdf_specs:
+    fig_ion, ax_ion = plt.subplots(figsize=(6, 4))
+    _ion_has_data = False
+
+    for _ion_t in _ion_sys_order:
+        _ion_exp_fldrs = list(iter_explicit_folders(_ion_t))
+        _r_ion, _g_ion, _gsem_ion = replica_mean_sem(
+            _ion_exp_fldrs,
+            lambda f, fn=_ion_fname: (
+                pd.read_csv(gzip.open(f / (fn + '.gz'), 'rt')) if (f / (fn + '.gz')).exists()
+                else (pd.read_csv(f / fn) if (f / fn).exists() else None)
+            ),
+            'g(r)',
+        )
+        if _r_ion is None:
+            continue
+
+        # Geometric correction: surface bead of NP with radius r_np blocks part of the
+        # spherical shell at distance r. Accessible fraction = (2*r_np + r) / (4*r_np)
+        # for r <= 2*r_np, else 1. Divide g(r) by this factor to recover true local density.
+        _f_acc  = np.where(_r_ion <= 2 * r_eff, (2 * r_eff + _r_ion) / (4 * r_eff), 1.0)
+        _g_ion  = _g_ion  / _f_acc
+        _gsem_ion = _gsem_ion / _f_acc
+
+        _ion_col = colors.get(_ion_t, 'k')
+        _ion_ls  = _ion_sys_styles.get(_ion_t, '-')
+        ax_ion.plot(_r_ion, _g_ion, color=_ion_col, linewidth=1.5,
+                    linestyle=_ion_ls, label=_ion_t.capitalize())
+        ax_ion.fill_between(_r_ion, _g_ion - _gsem_ion, _g_ion + _gsem_ion,
+                            color=_ion_col, alpha=0.2)
+        _ion_has_data = True
+
+    if not _ion_has_data:
+        plt.close(fig_ion)
+        print(f"  Skipped {_ion_outname}.png — no data found")
+        continue
+
+    ax_ion.axhline(1.0, color='gray', linewidth=0.6, linestyle=':')
+    ax_ion.set_xlabel('r [Å]', fontsize=13)
+    ax_ion.set_ylabel('g(r)', fontsize=13)
+    ax_ion.tick_params(axis='both', labelsize=12)
+    ax_ion.legend(fontsize=11)
+    ax_ion.grid(False)
+    ax_title(ax_ion, f'Explicit — {_ion_label} RDF')
+    fig_ion.tight_layout()
+    fig_ion.savefig(plot_dir / f'{_ion_outname}.png', dpi=150, bbox_inches='tight')
+    plt.close(fig_ion)
+    print(f"Saved {_ion_outname}.png")
+
+# 4th plot: Na–NP and Cl–PP overlaid; color = system type, linestyle = pair
+_ion_combined_specs = [
+    ('rdf-na-np.csv', 'Na–NP', '-'),
+    ('rdf-cl-pp.csv', 'Cl–PP', '--'),
+]
+fig_ionc, ax_ionc = plt.subplots(figsize=(6, 4))
+_ionc_has_data = False
+
+for _ionc_fname, _ionc_label, _ionc_ls in _ion_combined_specs:
+    for _ion_t in _ion_sys_order:
+        _ion_exp_fldrs = list(iter_explicit_folders(_ion_t))
+        _r_ionc, _g_ionc, _gsem_ionc = replica_mean_sem(
+            _ion_exp_fldrs,
+            lambda f, fn=_ionc_fname: (
+                pd.read_csv(gzip.open(f / (fn + '.gz'), 'rt')) if (f / (fn + '.gz')).exists()
+                else (pd.read_csv(f / fn) if (f / fn).exists() else None)
+            ),
+            'g(r)',
+        )
+        if _r_ionc is None:
+            continue
+        _f_acc_c    = np.where(_r_ionc <= 2 * r_eff, (2 * r_eff + _r_ionc) / (4 * r_eff), 1.0)
+        _g_ionc     = _g_ionc    / _f_acc_c
+        _gsem_ionc  = _gsem_ionc / _f_acc_c
+        _ionc_col   = colors.get(_ion_t, 'k')
+        _ionc_lbl   = f'{_ion_t.capitalize()} {_ionc_label}'
+        ax_ionc.plot(_r_ionc, _g_ionc, color=_ionc_col, linewidth=1.5,
+                     linestyle=_ionc_ls, label=_ionc_lbl)
+        ax_ionc.fill_between(_r_ionc, _g_ionc - _gsem_ionc, _g_ionc + _gsem_ionc,
+                             color=_ionc_col, alpha=0.15)
+        _ionc_has_data = True
+
+if _ionc_has_data:
+    ax_ionc.axhline(1.0, color='gray', linewidth=0.6, linestyle=':')
+    ax_ionc.set_xlabel('r [Å]', fontsize=13)
+    ax_ionc.set_ylabel('g(r)', fontsize=13)
+    ax_ionc.tick_params(axis='both', labelsize=12)
+    ax_ionc.legend(fontsize=9)
+    ax_ionc.grid(False)
+    ax_title(ax_ionc, 'Explicit — Na–NP & Cl–PP RDF overlay')
+    fig_ionc.tight_layout()
+    fig_ionc.savefig(plot_dir / 'rdf_overlay_ion-np_combined.png', dpi=150, bbox_inches='tight')
+    print("Saved rdf_overlay_ion-np_combined.png")
+plt.close(fig_ionc)
 
 # ── 7. Multipole energy decomposition ─────────────────────────────────────────
 energy_cols   = ['exact', 'tot', 'ii', 'id', 'dd', 'iq']
@@ -861,7 +991,7 @@ for sys_type, items in sorted(folders_by_type.items()):
             if ax_idx == 0:
                 ax.legend(fontsize=9, )
         ax.set_ylim(ymin - ypad, ymax + ypad)
-        ax.set_xlabel('R [Å]', fontsize=8)
+        ax.set_xlabel('r [Å]', fontsize=8)
         ax.set_ylabel('Energy [kT]', fontsize=8)
         ax_title(ax, title, fontsize=9)
         ax.tick_params(labelsize=7)
@@ -872,7 +1002,8 @@ for sys_type, items in sorted(folders_by_type.items()):
     cax = fig.add_axes([0.15, 0.02, 0.7, 0.025])
     sm  = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
-    fig.colorbar(sm, cax=cax, orientation='horizontal', label=r'$\kappa$ [Å$^{-1}$]')
+    _cb7 = fig.colorbar(sm, cax=cax, orientation='horizontal', label=r'$\kappa^{-1}$ [Å]')
+    _cb7.ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{1/x:.1f}'))
     fname = f'multipole_energy_{sys_type}'
     fig.savefig(plot_dir / f'{fname}.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
@@ -947,7 +1078,7 @@ if len(_me_types) >= 2:
             _ax.text(0.15, 0.05, f'({chr(ord("a") + _mi)})', transform=_ax.transAxes,
                      fontsize=12, ha='right', va='bottom')
             if _row == 1:
-                _ax.set_xlabel('R [Å]', fontsize=16)
+                _ax.set_xlabel('r [Å]', fontsize=16)
             _ax.set_ylabel(_etitle + ' [k$_\mathrm{B}$T]', fontsize=16)
 
         axes_me[0][0].legend(fontsize=13)
@@ -959,8 +1090,9 @@ if len(_me_types) >= 2:
         _pr_me = axes_me[1][2].get_position()
         _cax_me = fig_me.add_axes([_pl_me.x0, 0.06, _pr_me.x1 - _pl_me.x0, 0.03])
         _cb_me = fig_me.colorbar(_sm_me, cax=_cax_me, orientation='horizontal')
-        _cb_me.set_label(r'$\kappa$ [Å$^{-1}$]', fontsize=16)
+        _cb_me.set_label(r'$\kappa^{-1}$ [Å]', fontsize=16)
         _cb_me.ax.tick_params(labelsize=15)
+        _cb_me.ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{1/x:.1f}'))
 
         fig_title(fig_me, 'Combined multipole energy decomposition — all systems', fontweight='bold')
         fig_me.align_ylabels(axes_me.flatten())
@@ -1021,7 +1153,7 @@ for sys_type, items in sorted(folders_by_type.items()):
         ax.axhline(0, color='gray', linewidth=0.6, linestyle='--')
         ax.set_ylim(ymin - ypad, ymax + ypad)
         ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:.2f}'))
-        ax.set_xlabel('R [Å]', fontsize=8)
+        ax.set_xlabel('r [Å]', fontsize=8)
         ax.set_ylabel('Correlation', fontsize=8)
         ax_title(ax, label, fontsize=9)
         ax.tick_params(labelsize=7)
@@ -1032,7 +1164,8 @@ for sys_type, items in sorted(folders_by_type.items()):
     cax = fig.add_axes([0.15, 0.02, 0.7, 0.025])
     sm  = plt.cm.ScalarMappable(cmap=cmap, norm=norm_kappa)
     sm.set_array([])
-    fig.colorbar(sm, cax=cax, orientation='horizontal', label=r'$\kappa$ [Å$^{-1}$]')
+    _cb8 = fig.colorbar(sm, cax=cax, orientation='horizontal', label=r'$\kappa^{-1}$ [Å]')
+    _cb8.ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{1/x:.1f}'))
     fname = f'multipole_corr_{sys_type}'
     fig.savefig(plot_dir / f'{fname}.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
@@ -1109,7 +1242,7 @@ if len(_corr_types) >= 2:
                      fontsize=12, ha='right', va='bottom')
 
             if _row == 1:
-                _ax.set_xlabel('R [Å]', fontsize=13)
+                _ax.set_xlabel('r [Å]', fontsize=13)
             if _pcol == 1:
                 _ax.set_ylabel(_clabel, fontsize=12)
                 _ax.yaxis.set_label_position('right')
@@ -1135,8 +1268,9 @@ if len(_corr_types) >= 2:
         _pr = axes_cc[1][1].get_position()
         _cax_cc = fig_cc.add_axes([_pl.x0, 0.06, _pr.x1 - _pl.x0, 0.03])
         _cb_cc = fig_cc.colorbar(_sm_cc, cax=_cax_cc, orientation='horizontal')
-        _cb_cc.set_label(r'$\kappa$ [Å$^{-1}$]', fontsize=13)
+        _cb_cc.set_label(r'$\kappa^{-1}$ [Å]', fontsize=13)
         _cb_cc.ax.tick_params(labelsize=12)
+        _cb_cc.ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{1/x:.1f}'))
 
         fig_title(fig_cc, 'Combined orientational correlations — all systems', fontweight='bold')
         fig_cc.savefig(plot_dir / 'multipole_corr_combined.png', dpi=150, bbox_inches='tight')
