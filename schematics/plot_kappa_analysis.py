@@ -450,6 +450,7 @@ if _bk_order:
     _bax_t.axhline(1.0, color='gray', linewidth=0.6, linestyle=':')
     _bax_t.set_ylabel('g(r)', fontsize=11)
     _bax_t.set_xlim(2 * r_np - 0.4, 60 + 0.4)
+    _bax_t.xaxis.set_major_locator(plt.MultipleLocator(4))
     _bax_t.legend(fontsize=9)
 
     _bax_b.axhline(0, color='gray', linewidth=0.8, linestyle='--')
@@ -461,6 +462,40 @@ if _bk_order:
     _bfig.savefig(plot_dir / 'best_kappa_comparison_combined.png', dpi=150, bbox_inches='tight')
     plt.close(_bfig)
     print("Saved best_kappa_comparison_combined.png")
+
+# ── 2c. Explicit-only g(r) — all systems, black, same linestyles ──────────────
+print("\nPlotting explicit-only RDF overlay (black)...")
+_eo_order  = [t for t in ('isotropic', 'dipolar', 'quadrupolar', 'neutral') if t in best_kappas]
+
+if _eo_order:
+    _eo_fig, _eo_ax = plt.subplots(figsize=(6, 4))
+
+    for _eo_type in _eo_order:
+        _eo_ls = _bk_styles.get(_eo_type, '-')
+        _eo_r, _eo_g, _eo_sem = replica_mean_sem(
+            list(iter_explicit_folders(_eo_type)), load_rdf, 'g(r)')
+        if _eo_r is None:
+            continue
+        _eo_mask = (_eo_r >= 2 * r_np) & (_eo_r <= 60)
+        _eo_ax.plot(_eo_r[_eo_mask], _eo_g[_eo_mask],
+                    color='black', linewidth=1.5, linestyle=_eo_ls,
+                    label=_eo_type.capitalize())
+        _eo_ax.fill_between(_eo_r[_eo_mask],
+                            (_eo_g - _eo_sem)[_eo_mask],
+                            (_eo_g + _eo_sem)[_eo_mask],
+                            color='black', alpha=0.12)
+
+    _eo_ax.axhline(1.0, color='gray', linewidth=0.6, linestyle=':')
+    _eo_ax.set_xlim(2 * r_np - 0.4, 60 + 0.4)
+    _eo_ax.xaxis.set_major_locator(plt.MultipleLocator(4))
+    _eo_ax.set_xlabel('r [Å]', fontsize=11)
+    _eo_ax.set_ylabel('g(r)', fontsize=11)
+    _eo_ax.legend(fontsize=9, frameon=False)
+    ax_title(_eo_ax, 'Explicit simulations — g(r)')
+    _eo_fig.tight_layout()
+    _eo_fig.savefig(plot_dir / 'rdf_explicit_overlay_black.png', dpi=150, bbox_inches='tight')
+    plt.close(_eo_fig)
+    print("Saved rdf_explicit_overlay_black.png")
 
 # ── 3. Pex vs Energy correlation (implicit, all kappas) ──────────────────────
 print("\nPlotting Pex vs Energy...")
@@ -1036,11 +1071,11 @@ if len(_me_types) >= 2:
                 if _m is not None:
                     _me_ymin[_col] = min(_me_ymin[_col], (_m - _s).min())
                     _me_ymax[_col] = max(_me_ymax[_col], (_m + _s).max())
-            _re, _me2, _ = replica_mean_sem(list(iter_explicit_folders(_t)), load_multipole, _col)
-            _mce[(_t, _col)] = (_re, _me2)
+            _re, _me2, _se2 = replica_mean_sem(list(iter_explicit_folders(_t)), load_multipole, _col)
+            _mce[(_t, _col)] = (_re, _me2, _se2)
             if _me2 is not None:
-                _me_ymin[_col] = min(_me_ymin[_col], _me2.min())
-                _me_ymax[_col] = max(_me_ymax[_col], _me2.max())
+                _me_ymin[_col] = min(_me_ymin[_col], (_me2 - _se2).min())
+                _me_ymax[_col] = max(_me_ymax[_col], (_me2 + _se2).max())
 
     if not np.isinf(_me_ymin[energy_cols[0]]):
         fig_me, axes_me = plt.subplots(2, 3, figsize=(13, 7),
@@ -1055,20 +1090,25 @@ if len(_me_types) >= 2:
             for _t in _me_types:
                 _ls = _me_styles.get(_t, '-')
                 for _kappa in group_by_kappa(folders_by_type[_t]):
-                    _r, _m, _ = _mc[(_t, _col, _kappa)]
+                    _r, _m, _s = _mc[(_t, _col, _kappa)]
                     if _r is not None:
                         _xmask = (_r >= _me_xmin) & (_r <= _me_xmax)
+                        _col_k = _me_cmap(_me_norm(_kappa))
                         _ax.plot(_r[_xmask], _m[_xmask], linewidth=1.5, alpha=1, linestyle=_ls,
-                                 color=_me_cmap(_me_norm(_kappa)))
+                                 color=_col_k)
+                        _ax.fill_between(_r[_xmask], (_m - _s)[_xmask], (_m + _s)[_xmask],
+                                         color=_col_k, alpha=0.2)
 
             for _t in _me_types:
                 _ls = _me_styles.get(_t, '-')
-                _re, _me2 = _mce[(_t, _col)]
+                _re, _me2, _se2 = _mce[(_t, _col)]
                 if _re is not None:
                     _xmask = (_re >= _me_xmin) & (_re <= _me_xmax)
                     _ax.plot(_re[_xmask], _me2[_xmask], linewidth=1.5, color='black',
                              linestyle=_ls, alpha=1,
                              label=_t.capitalize() if _mi == 0 else '_')
+                    _ax.fill_between(_re[_xmask], (_me2 - _se2)[_xmask], (_me2 + _se2)[_xmask],
+                                     color='black', alpha=0.15)
 
             _ypad = (_me_ymax[_col] - _me_ymin[_col]) * 0.05
             _ax.set_ylim(_me_ymin[_col] - _ypad, _me_ymax[_col] + _ypad)
@@ -1099,6 +1139,63 @@ if len(_me_types) >= 2:
         fig_me.savefig(plot_dir / 'multipole_energy_combined.png', dpi=150, bbox_inches='tight')
         plt.close(fig_me)
         print("Saved multipole_energy_combined.png")
+
+# ── 7c. Explicit-only multipole energy — all systems, black ───────────────────
+print("\nPlotting explicit-only multipole energy (black)...")
+if len(_me_types) >= 2:
+    # Compute y range from explicit data only
+    _meb_ymin = {col: np.inf  for col in energy_cols}
+    _meb_ymax = {col: -np.inf for col in energy_cols}
+    _meb_cache = {}
+    for _t in _me_types:
+        for _col in energy_cols:
+            _re, _me2, _se2 = replica_mean_sem(list(iter_explicit_folders(_t)), load_multipole, _col)
+            _meb_cache[(_t, _col)] = (_re, _me2, _se2)
+            if _me2 is not None:
+                _meb_ymin[_col] = min(_meb_ymin[_col], (_me2 - _se2).min())
+                _meb_ymax[_col] = max(_meb_ymax[_col], (_me2 + _se2).max())
+
+    if not np.isinf(_meb_ymin[energy_cols[0]]):
+        fig_meb, axes_meb = plt.subplots(2, 3, figsize=(13, 7),
+                                         sharex=True, sharey=False, squeeze=False)
+        fig_meb.subplots_adjust(hspace=0.16, wspace=0.35, bottom=0.21)
+
+        for _mi, (_col, _etitle) in enumerate(zip(energy_cols, energy_titles)):
+            _row, _pcol = divmod(_mi, 3)
+            _ax = axes_meb[_row][_pcol]
+
+            for _t in _me_types:
+                _ls = _me_styles.get(_t, '-')
+                _re, _me2, _se2 = _meb_cache[(_t, _col)]
+                if _re is None:
+                    continue
+                _xmask = (_re >= _me_xmin) & (_re <= _me_xmax)
+                _ax.plot(_re[_xmask], _me2[_xmask], linewidth=1.5, color='black',
+                         linestyle=_ls, label=_t.capitalize() if _mi == 0 else '_')
+                _ax.fill_between(_re[_xmask],
+                                 (_me2 - _se2)[_xmask], (_me2 + _se2)[_xmask],
+                                 color='black', alpha=0.15)
+
+            _ypad = (_meb_ymax[_col] - _meb_ymin[_col]) * 0.05
+            _ax.set_ylim(_meb_ymin[_col] - _ypad, _meb_ymax[_col] + _ypad)
+            _ax.set_xlim(_me_xmin - _me_xpad, _me_xmax + _me_xpad)
+            _ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=4))
+            _ax.tick_params(axis='both', labelsize=15)
+            _ax.text(0.15, 0.05, f'({chr(ord("a") + _mi)})', transform=_ax.transAxes,
+                     fontsize=12, ha='right', va='bottom')
+            if _row == 1:
+                _ax.set_xlabel('r [Å]', fontsize=16)
+            _ax.set_ylabel(_etitle + ' [k$_\mathrm{B}$T]', fontsize=16)
+
+        axes_meb[0][0].legend(fontsize=13)
+        axes_meb[0][0].set_xticks(range(42, 61, 4))
+
+        fig_title(fig_meb, 'Explicit — multipole energy decomposition (mean ± SEM)', fontweight='bold')
+        fig_meb.align_ylabels(axes_meb.flatten())
+        fig_meb.tight_layout(rect=[0, 0.02, 1, 1])
+        fig_meb.savefig(plot_dir / 'multipole_energy_explicit_black.png', dpi=150, bbox_inches='tight')
+        plt.close(fig_meb)
+        print("Saved multipole_energy_explicit_black.png")
 
 # ── 8. Orientational correlations ─────────────────────────────────────────────
 corr_cols   = ['mucorr', 'long', 'quadcorr_norm', 'p2']
@@ -1197,11 +1294,11 @@ if len(_corr_types) >= 2:
                 if _m is not None:
                     _cymin = min(_cymin, (_m - _s).min())
                     _cymax = max(_cymax, (_m + _s).max())
-            _re, _me, _ = replica_mean_sem(list(iter_explicit_folders(_t)), load_multipole, _col)
-            _ce[(_t, _col)] = (_re, _me)
+            _re, _me, _se = replica_mean_sem(list(iter_explicit_folders(_t)), load_multipole, _col)
+            _ce[(_t, _col)] = (_re, _me, _se)
             if _me is not None:
-                _cymin = min(_cymin, _me.min())
-                _cymax = max(_cymax, _me.max())
+                _cymin = min(_cymin, (_me - _se).min())
+                _cymax = max(_cymax, (_me + _se).max())
 
     if not np.isinf(_cymin):
         _cypad = (_cymax - _cymin) * 0.05
@@ -1218,19 +1315,24 @@ if len(_corr_types) >= 2:
             for _t in _corr_types:
                 _ls = _corr_styles.get(_t, '-')
                 for _kappa in group_by_kappa(folders_by_type[_t]):
-                    _r, _m, _ = _cc[(_t, _col, _kappa)]
+                    _r, _m, _s = _cc[(_t, _col, _kappa)]
                     if _r is not None:
                         _xmask = (_r >= _cr_xmin) & (_r <= _cr_xmax)
+                        _col_k = _corr_cmap(_corr_norm(_kappa))
                         _ax.plot(_r[_xmask], _m[_xmask], linewidth=1, alpha=1, linestyle=_ls,
-                                 color=_corr_cmap(_corr_norm(_kappa)))
+                                 color=_col_k)
+                        _ax.fill_between(_r[_xmask], (_m - _s)[_xmask], (_m + _s)[_xmask],
+                                         color=_col_k, alpha=0.2)
 
             for _t in _corr_types:
                 _ls = _corr_styles.get(_t, '-')
-                _re, _me = _ce[(_t, _col)]
+                _re, _me, _se = _ce[(_t, _col)]
                 if _re is not None:
                     _xmask = (_re >= _cr_xmin) & (_re <= _cr_xmax)
                     _ax.plot(_re[_xmask], _me[_xmask], linewidth=1, color='black',
                              linestyle=_ls, alpha=1, label=_t.capitalize())
+                    _ax.fill_between(_re[_xmask], (_me - _se)[_xmask], (_me + _se)[_xmask],
+                                     color='black', alpha=0.15)
 
             _ax.axhline(0, color='gray', linewidth=1, linestyle='--')
             _ax.set_ylim((-0.1, 0.28) if _row == 0 else (-0.28, 0.1))
@@ -1276,6 +1378,65 @@ if len(_corr_types) >= 2:
         fig_cc.savefig(plot_dir / 'multipole_corr_combined.png', dpi=150, bbox_inches='tight')
         plt.close(fig_cc)
         print("Saved multipole_corr_combined.png")
+
+# ── 8c. Explicit-only orientational correlations — all systems, black ─────────
+print("\nPlotting explicit-only orientational correlations (black)...")
+if len(_corr_types) >= 2:
+    # Compute y range from explicit data only
+    _ccb_ymin, _ccb_ymax = np.inf, -np.inf
+    _ccb_cache = {}
+    for _t in _corr_types:
+        for _col in corr_cols:
+            _re, _me, _se = replica_mean_sem(list(iter_explicit_folders(_t)), load_multipole, _col)
+            _ccb_cache[(_t, _col)] = (_re, _me, _se)
+            if _me is not None:
+                _ccb_ymin = min(_ccb_ymin, (_me - _se).min())
+                _ccb_ymax = max(_ccb_ymax, (_me + _se).max())
+
+    if not np.isinf(_ccb_ymin):
+        fig_ccb, axes_ccb = plt.subplots(2, 2, figsize=(9, 7),
+                                         sharex=True, sharey='row', squeeze=False)
+        fig_ccb.subplots_adjust(hspace=0.16, wspace=0.12, bottom=0.19)
+
+        for _ci, (_col, _clabel) in enumerate(zip(corr_cols, corr_labels)):
+            _row, _pcol = divmod(_ci, 2)
+            _ax = axes_ccb[_row][_pcol]
+
+            for _t in _corr_types:
+                _ls = _corr_styles.get(_t, '-')
+                _re, _me, _se = _ccb_cache[(_t, _col)]
+                if _re is None:
+                    continue
+                _xmask = (_re >= _cr_xmin) & (_re <= _cr_xmax)
+                _ax.plot(_re[_xmask], _me[_xmask], linewidth=1, color='black',
+                         linestyle=_ls, label=_t.capitalize() if _ci == 0 else '_')
+                _ax.fill_between(_re[_xmask],
+                                 (_me - _se)[_xmask], (_me + _se)[_xmask],
+                                 color='black', alpha=0.15)
+
+            _ax.axhline(0, color='gray', linewidth=1, linestyle='--')
+            _ax.set_xlim(_cr_xmin - _cr_xpad, _cr_xmax + _cr_xpad)
+            _ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:.1f}'))
+            _ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=4))
+            _ax.tick_params(axis='both', labelsize=12)
+            _ax.text(0.97, 0.05, f'({chr(ord("a") + _ci)})', transform=_ax.transAxes,
+                     fontsize=12, ha='right', va='bottom')
+            if _row == 1:
+                _ax.set_xlabel('r [Å]', fontsize=13)
+            if _pcol == 1:
+                _ax.set_ylabel(_clabel, fontsize=12)
+                _ax.yaxis.set_label_position('right')
+                _ax.yaxis.tick_right()
+            else:
+                _ax.set_ylabel(_clabel, fontsize=12)
+
+        axes_ccb[0][0].set_xticks(range(42, 60, 4))
+        axes_ccb[0][0].legend(fontsize=11)
+
+        fig_title(fig_ccb, 'Explicit — orientational correlations (mean ± SEM)', fontweight='bold')
+        fig_ccb.savefig(plot_dir / 'multipole_corr_explicit_black.png', dpi=150, bbox_inches='tight')
+        plt.close(fig_ccb)
+        print("Saved multipole_corr_explicit_black.png")
 
 # ── 9. Summary table: RDF first-peak statistics ───────────────────────────────
 print("\n── RDF first-peak summary ──")
