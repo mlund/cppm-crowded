@@ -153,6 +153,20 @@ def iter_explicit_folders(sys_type):
             yield folder
 
 
+def iter_exp_kappa_folders():
+    """Yield (sys_type, kappa, replica, folder) for implicit dirs labelled with _exp_ suffix
+    (theoretical kappa derived from explicit-ion simulations)."""
+    pattern = re.compile(r'^(dipolar|isotropic|neutral|quadrupolar)-imp_([\d.]+?)_exp(?:_(\d+))?$')
+    for subdir in sorted(base_dir.iterdir()):
+        if not subdir.is_dir():
+            continue
+        for folder in sorted(subdir.iterdir()):
+            m = pattern.match(folder.name)
+            if m:
+                replica = int(m.group(3)) if m.group(3) else 1
+                yield m.group(1), float(m.group(2)), replica, folder
+
+
 # ── parse implicit pressure data ──────────────────────────────────────────────
 
 def parse_folders():
@@ -288,6 +302,12 @@ folders_by_type = defaultdict(list)
 for sys_type, kappa, replica, folder in iter_sim_folders():
     label = f'κ⁻¹={1/kappa:.1f} Å' if replica == 1 else f'κ⁻¹={1/kappa:.1f} Å (r{replica})'
     folders_by_type[sys_type].append((kappa, label, folder))
+
+exp_kappa_by_type = defaultdict(list)
+for sys_type, kappa, replica, folder in iter_exp_kappa_folders():
+    exp_kappa_by_type[sys_type].append(folder)
+if exp_kappa_by_type:
+    print(f"Found theoretical-κ implicit folders for: {', '.join(sorted(exp_kappa_by_type))}")
 
 print("\nFinding best kappa from RDF vs explicit...")
 best_kappas, interp_kappas = find_best_kappa_rdf(folders_by_type)
@@ -436,16 +456,41 @@ if _bk_order:
         _bls  = _bk_styles.get(_btype, '-')
 
         _bax_t.plot(_br, _bg_imp_p, color=_bcol, linewidth=1.5, linestyle=_bls,
-                    label=_btype.capitalize())
+                    label=_btype.capitalize(), zorder=2)
         _bax_t.fill_between(_br, _bg_imp_p - _bg_sem_p, _bg_imp_p + _bg_sem_p,
-                            color=_bcol, alpha=0.3)
-        _bax_t.plot(_br, _bg_exp_p, color='black', linewidth=1.5, linestyle=_bls)
+                            color=_bcol, alpha=0.3, zorder=2)
+        _bax_t.plot(_br, _bg_exp_p, color='black', linewidth=1.5, linestyle=_bls, zorder=3)
         _bax_t.fill_between(_br, _bg_exp_p - _bg_esem, _bg_exp_p + _bg_esem,
-                            color='black', alpha=0.15)
+                            color='black', alpha=0.15, zorder=3)
 
-        _bax_b.plot(_br, _bres, color=_bcol, linewidth=1.0, linestyle=_bls)
+        _bax_b.plot(_br, _bres, color=_bcol, linewidth=1.0, linestyle=_bls, zorder=2)
         _bax_b.fill_between(_br, _bres - _bres_err, _bres + _bres_err,
-                            color=_bcol, alpha=0.3)
+                            color=_bcol, alpha=0.3, zorder=2)
+
+    # Theoretical-κ implicit overlays — dark gray, matching linestyle per system
+    _btheor_color = '#888888'
+    for _btype in _bk_order:
+        _ek_folders = exp_kappa_by_type.get(_btype, [])
+        if not _ek_folders:
+            continue
+        _bls = _bk_styles.get(_btype, '-')
+        _br_ek, _bg_ek, _bg_ek_sem = replica_mean_sem(_ek_folders, load_rdf, 'g(r)')
+        if _br_ek is None:
+            continue
+        _bmask_ek = (_br_ek >= 2 * r_np) & (_br_ek <= 60)
+        _br_ek_p  = _br_ek[_bmask_ek]
+        _bg_ek_p  = _bg_ek[_bmask_ek]
+        _bg_ek_sp = _bg_ek_sem[_bmask_ek]
+        _br_exp, _bg_exp, _bg_exp_sem = replica_mean_sem(
+            list(iter_explicit_folders(_btype)), load_rdf, 'g(r)')
+        _bres_ek     = _bg_ek_p - np.interp(_br_ek_p, _br_exp, _bg_exp)
+        _bres_ek_err = np.sqrt(_bg_ek_sp**2 + np.interp(_br_ek_p, _br_exp, _bg_exp_sem)**2)
+        _bax_t.plot(_br_ek_p, _bg_ek_p, color=_btheor_color, linewidth=1.5, linestyle=_bls, zorder=1)
+        _bax_t.fill_between(_br_ek_p, _bg_ek_p - _bg_ek_sp, _bg_ek_p + _bg_ek_sp,
+                            color=_btheor_color, alpha=0.2, zorder=1)
+        _bax_b.plot(_br_ek_p, _bres_ek, color=_btheor_color, linewidth=1.0, linestyle=_bls, zorder=1)
+        _bax_b.fill_between(_br_ek_p, _bres_ek - _bres_ek_err, _bres_ek + _bres_ek_err,
+                            color=_btheor_color, alpha=0.2, zorder=1)
 
     _bax_t.axhline(1.0, color='gray', linewidth=0.6, linestyle=':')
     _bax_t.set_ylabel('g(r)', fontsize=11)
@@ -1077,16 +1122,22 @@ if len(_me_types) >= 2:
                 _me_ymin[_col] = min(_me_ymin[_col], (_me2 - _se2).min())
                 _me_ymax[_col] = max(_me_ymax[_col], (_me2 + _se2).max())
 
-    if not np.isinf(_me_ymin[energy_cols[0]]):
+    _me_ymin_global = min(_me_ymin[col] for col in energy_cols)
+    _me_ymax_global = max(_me_ymax[col] for col in energy_cols)
+    _me_ypad_global = (_me_ymax_global - _me_ymin_global) * 0.05
+
+    if not np.isinf(_me_ymin_global):
         fig_me, axes_me = plt.subplots(2, 3, figsize=(13, 7),
                                        sharex=True, sharey=False, squeeze=False)
-        fig_me.subplots_adjust(hspace=0.16, wspace=0.35, bottom=0.21)
+        fig_me.subplots_adjust(hspace=0.16, wspace=0.40, bottom=0.21)
+
+        _me_xmin, _me_xmax, _me_xpad = 41, 60, 0.4
+        _inset_xmax = 50
 
         for _mi, (_col, _etitle) in enumerate(zip(energy_cols, energy_titles)):
             _row, _pcol = divmod(_mi, 3)
             _ax = axes_me[_row][_pcol]
 
-            _me_xmin, _me_xmax, _me_xpad = 41, 60, 0.4
             for _t in _me_types:
                 _ls = _me_styles.get(_t, '-')
                 for _kappa in group_by_kappa(folders_by_type[_t]):
@@ -1110,8 +1161,7 @@ if len(_me_types) >= 2:
                     _ax.fill_between(_re[_xmask], (_me2 - _se2)[_xmask], (_me2 + _se2)[_xmask],
                                      color='black', alpha=0.15)
 
-            _ypad = (_me_ymax[_col] - _me_ymin[_col]) * 0.05
-            _ax.set_ylim(_me_ymin[_col] - _ypad, _me_ymax[_col] + _ypad)
+            _ax.set_ylim(_me_ymin_global - _me_ypad_global, _me_ymax_global + _me_ypad_global)
             _ax.set_xlim(_me_xmin - _me_xpad, _me_xmax + _me_xpad)
             _ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=4))
             _ax.tick_params(axis='both', labelsize=15)
@@ -1120,6 +1170,40 @@ if len(_me_types) >= 2:
             if _row == 1:
                 _ax.set_xlabel('r [Å]', fontsize=16)
             _ax.set_ylabel(_etitle + ' [k$_\mathrm{B}$T]', fontsize=16)
+
+            # Inset zoom [_me_xmin, _inset_xmax] for panels b, c, d, e, f
+            if _mi in (1, 2, 3, 4, 5):
+                _inset_pos = [0.50, 0.15, 0.45, 0.42] if _mi in (1,2) else [0.50, 0.54, 0.45, 0.42]
+                _iax = _ax.inset_axes(_inset_pos)
+                _iy_vals = []
+                for _t in _me_types:
+                    _ls = _me_styles.get(_t, '-')
+                    for _kappa in group_by_kappa(folders_by_type[_t]):
+                        _r, _m, _s = _mc[(_t, _col, _kappa)]
+                        if _r is not None:
+                            _zm = (_r >= _me_xmin) & (_r <= _inset_xmax)
+                            if _zm.any():
+                                _col_k = _me_cmap(_me_norm(_kappa))
+                                _iax.plot(_r[_zm], _m[_zm], linewidth=1.0, linestyle=_ls,
+                                          color=_col_k, alpha=1)
+                                _iy_vals.extend((_m - _s)[_zm].tolist())
+                                _iy_vals.extend((_m + _s)[_zm].tolist())
+                for _t in _me_types:
+                    _ls = _me_styles.get(_t, '-')
+                    _re, _me2, _se2 = _mce[(_t, _col)]
+                    if _re is not None:
+                        _zm = (_re >= _me_xmin) & (_re <= _inset_xmax)
+                        if _zm.any():
+                            _iax.plot(_re[_zm], _me2[_zm], linewidth=1.0, color='black',
+                                      linestyle=_ls, alpha=1)
+                            _iy_vals.extend((_me2 - _se2)[_zm].tolist())
+                            _iy_vals.extend((_me2 + _se2)[_zm].tolist())
+                if _iy_vals:
+                    _iy_pad = (max(_iy_vals) - min(_iy_vals)) * 0.08
+                    _iax.set_ylim(min(_iy_vals) - _iy_pad, max(_iy_vals) + _iy_pad)
+                _iax.set_xlim(_me_xmin, _inset_xmax)
+                _iax.tick_params(labelsize=9)
+                _iax.yaxis.set_major_locator(plt.MaxNLocator(nbins=3))
 
         axes_me[0][0].legend(fontsize=13)
         axes_me[0][0].set_xticks(range(42, 61, 4))
@@ -1158,7 +1242,7 @@ if len(_me_types) >= 2:
     if not np.isinf(_meb_ymin[energy_cols[0]]):
         fig_meb, axes_meb = plt.subplots(2, 3, figsize=(13, 7),
                                          sharex=True, sharey=False, squeeze=False)
-        fig_meb.subplots_adjust(hspace=0.16, wspace=0.35, bottom=0.21)
+        fig_meb.subplots_adjust(hspace=0.16, wspace=0.40, bottom=0.21)
 
         for _mi, (_col, _etitle) in enumerate(zip(energy_cols, energy_titles)):
             _row, _pcol = divmod(_mi, 3)
@@ -1176,8 +1260,7 @@ if len(_me_types) >= 2:
                                  (_me2 - _se2)[_xmask], (_me2 + _se2)[_xmask],
                                  color='black', alpha=0.15)
 
-            _ypad = (_meb_ymax[_col] - _meb_ymin[_col]) * 0.05
-            _ax.set_ylim(_meb_ymin[_col] - _ypad, _meb_ymax[_col] + _ypad)
+            _ax.set_ylim(_me_ymin_global - _me_ypad_global, _me_ymax_global + _me_ypad_global)
             _ax.set_xlim(_me_xmin - _me_xpad, _me_xmax + _me_xpad)
             _ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=4))
             _ax.tick_params(axis='both', labelsize=15)
@@ -1192,10 +1275,113 @@ if len(_me_types) >= 2:
 
         fig_title(fig_meb, 'Explicit — multipole energy decomposition (mean ± SEM)', fontweight='bold')
         fig_meb.align_ylabels(axes_meb.flatten())
-        fig_meb.tight_layout(rect=[0, 0.02, 1, 1])
         fig_meb.savefig(plot_dir / 'multipole_energy_explicit_black.png', dpi=150, bbox_inches='tight')
         plt.close(fig_meb)
         print("Saved multipole_energy_explicit_black.png")
+
+# ── 7d. Multipole energy — best-κ implicit + explicit + theoretical-κ ─────────
+print("\nPlotting multipole energy — best-κ comparison...")
+_mebk_types  = [t for t in ('isotropic', 'dipolar', 'quadrupolar') if t in best_kappas]
+_mebk_styles = {'isotropic': ':', 'dipolar': '--', 'quadrupolar': '-'}
+_mebk_theor_color = '#888888'
+_mebk_xmin, _mebk_xmax, _mebk_xpad = 41, 60, 0.4
+
+if _mebk_types:
+    _mebk_cache = {}
+    _mebk_ymin_col = {col: np.inf  for col in energy_cols}
+    _mebk_ymax_col = {col: -np.inf for col in energy_cols}
+
+    for _t in _mebk_types:
+        _bk          = best_kappas[_t]
+        _bk_fldrs    = group_by_kappa(folders_by_type[_t]).get(_bk, [])
+        _exp_fldrs   = list(iter_explicit_folders(_t))
+        _ek_fldrs    = exp_kappa_by_type.get(_t, [])
+        for _col in energy_cols:
+            _ri, _mi2, _si = replica_mean_sem(_bk_fldrs,  load_multipole, _col)
+            _re, _me3, _se = replica_mean_sem(_exp_fldrs, load_multipole, _col)
+            _rk, _mk, _sk  = replica_mean_sem(_ek_fldrs,  load_multipole, _col)
+            _mebk_cache[(_t, _col)] = (_ri, _mi2, _si), (_re, _me3, _se), (_rk, _mk, _sk)
+            for _r2, _m2, _s2 in [(_ri, _mi2, _si), (_re, _me3, _se), (_rk, _mk, _sk)]:
+                if _m2 is not None:
+                    _mebk_ymin_col[_col] = min(_mebk_ymin_col[_col], (_m2 - _s2).min())
+                    _mebk_ymax_col[_col] = max(_mebk_ymax_col[_col], (_m2 + _s2).max())
+
+    _mebk_ymin_g = min(v for v in _mebk_ymin_col.values() if not np.isinf(v))
+    _mebk_ymax_g = max(v for v in _mebk_ymax_col.values() if not np.isinf(v))
+    _mebk_ypad_g = (_mebk_ymax_g - _mebk_ymin_g) * 0.05
+
+    fig_mebk, axes_mebk = plt.subplots(2, 3, figsize=(13, 7), sharex=True, sharey=False, squeeze=False)
+    fig_mebk.subplots_adjust(hspace=0.35, wspace=0.40, bottom=0.10)
+
+    for _mi, (_col, _etitle) in enumerate(zip(energy_cols, energy_titles)):
+        _row, _pcol = divmod(_mi, 3)
+        _ax = axes_mebk[_row][_pcol]
+
+        for _t in _mebk_types:
+            _ls   = _mebk_styles.get(_t, '-')
+            _tcol = colors.get(_t, 'k')
+            (_ri, _mi2, _si), (_re, _me3, _se), (_rk, _mk, _sk) = _mebk_cache[(_t, _col)]
+
+            if _ri is not None:
+                _xm = (_ri >= _mebk_xmin) & (_ri <= _mebk_xmax)
+                _ax.plot(_ri[_xm], _mi2[_xm], color=_tcol, linewidth=1.5, linestyle=_ls,
+                         label=_t.capitalize() if _mi == 0 else '_', zorder=2)
+                _ax.fill_between(_ri[_xm], (_mi2 - _si)[_xm], (_mi2 + _si)[_xm],
+                                 color=_tcol, alpha=0.2, zorder=2)
+            if _re is not None:
+                _xm = (_re >= _mebk_xmin) & (_re <= _mebk_xmax)
+                _ax.plot(_re[_xm], _me3[_xm], color='black', linewidth=1.5, linestyle=_ls, zorder=3)
+                _ax.fill_between(_re[_xm], (_me3 - _se)[_xm], (_me3 + _se)[_xm],
+                                 color='black', alpha=0.15, zorder=3)
+            if _rk is not None:
+                _xm = (_rk >= _mebk_xmin) & (_rk <= _mebk_xmax)
+                _ax.plot(_rk[_xm], _mk[_xm], color=_mebk_theor_color, linewidth=1.5, linestyle=_ls, zorder=1)
+                _ax.fill_between(_rk[_xm], (_mk - _sk)[_xm], (_mk + _sk)[_xm],
+                                 color=_mebk_theor_color, alpha=0.2, zorder=1)
+
+        _ax.set_ylim(_mebk_ymin_g - _mebk_ypad_g, _mebk_ymax_g + _mebk_ypad_g)
+        _ax.set_xlim(_mebk_xmin - _mebk_xpad, _mebk_xmax + _mebk_xpad)
+        _ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=4))
+        _ax.tick_params(axis='both', labelsize=15)
+        _ax.text(0.15, 0.05, f'({chr(ord("a") + _mi)})', transform=_ax.transAxes,
+                 fontsize=12, ha='right', va='bottom')
+        if _row == 1:
+            _ax.set_xlabel('r [Å]', fontsize=16)
+        _ax.set_ylabel(_etitle + ' [k$_\mathrm{B}$T]', fontsize=16)
+
+        if _mi in (1, 2, 3, 4, 5):
+            _inset_pos = [0.50, 0.13, 0.45, 0.42] if _mi in (1, 2) else [0.50, 0.52, 0.45, 0.42]
+            _iax = _ax.inset_axes(_inset_pos)
+            _iy_vals = []
+            for _t in _mebk_types:
+                _ls   = _mebk_styles.get(_t, '-')
+                _tcol = colors.get(_t, 'k')
+                (_ri, _mi2, _si), (_re, _me3, _se), (_rk, _mk, _sk) = _mebk_cache[(_t, _col)]
+                for _rd, _md, _sd, _cd in [
+                    (_ri, _mi2, _si, _tcol),
+                    (_re, _me3, _se, 'black'),
+                    (_rk, _mk, _sk, _mebk_theor_color),
+                ]:
+                    if _rd is not None:
+                        _zm = (_rd >= _mebk_xmin) & (_rd <= _inset_xmax)
+                        if _zm.any():
+                            _iax.plot(_rd[_zm], _md[_zm], linewidth=1.0, linestyle=_ls, color=_cd)
+                            _iy_vals.extend((_md - _sd)[_zm].tolist())
+                            _iy_vals.extend((_md + _sd)[_zm].tolist())
+            if _iy_vals:
+                _iy_pad = (max(_iy_vals) - min(_iy_vals)) * 0.08
+                _iax.set_ylim(min(_iy_vals) - _iy_pad, max(_iy_vals) + _iy_pad)
+            _iax.set_xlim(_mebk_xmin, _inset_xmax)
+            _iax.tick_params(labelsize=9)
+            _iax.yaxis.set_major_locator(plt.MaxNLocator(nbins=3))
+
+    axes_mebk[0][0].legend(fontsize=13)
+    axes_mebk[0][0].set_xticks(range(42, 61, 4))
+    fig_title(fig_mebk, 'Multipole energy — best-κ implicit vs explicit', fontweight='bold')
+    fig_mebk.align_ylabels(axes_mebk.flatten())
+    fig_mebk.savefig(plot_dir / 'multipole_energy_best_kappa.png', dpi=150, bbox_inches='tight')
+    plt.close(fig_mebk)
+    print("Saved multipole_energy_best_kappa.png")
 
 # ── 8. Orientational correlations ─────────────────────────────────────────────
 corr_cols   = ['mucorr', 'long', 'quadcorr_norm', 'p2']
@@ -1437,6 +1623,89 @@ if len(_corr_types) >= 2:
         fig_ccb.savefig(plot_dir / 'multipole_corr_explicit_black.png', dpi=150, bbox_inches='tight')
         plt.close(fig_ccb)
         print("Saved multipole_corr_explicit_black.png")
+
+# ── 8d. Orientational correlations — best-κ implicit + explicit + theoretical-κ ─
+print("\nPlotting orientational correlations — best-κ comparison...")
+_ccbk_types  = [t for t in ('isotropic', 'dipolar', 'quadrupolar') if t in best_kappas]
+_ccbk_styles = {'isotropic': ':', 'dipolar': '--', 'quadrupolar': '-'}
+_ccbk_theor_color = '#888888'
+_ccbk_xmin, _ccbk_xmax, _ccbk_xpad = 41, 59, 0.4
+
+if _ccbk_types:
+    _ccbk_cache = {}
+    _ccbk_ymin_col = {col: np.inf  for col in corr_cols}
+    _ccbk_ymax_col = {col: -np.inf for col in corr_cols}
+
+    for _t in _ccbk_types:
+        _bk        = best_kappas[_t]
+        _bk_fldrs  = group_by_kappa(folders_by_type[_t]).get(_bk, [])
+        _exp_fldrs = list(iter_explicit_folders(_t))
+        _ek_fldrs  = exp_kappa_by_type.get(_t, [])
+        for _col in corr_cols:
+            _ri, _mi2, _si = replica_mean_sem(_bk_fldrs,  load_multipole, _col)
+            _re, _me3, _se = replica_mean_sem(_exp_fldrs, load_multipole, _col)
+            _rk, _mk, _sk  = replica_mean_sem(_ek_fldrs,  load_multipole, _col)
+            _ccbk_cache[(_t, _col)] = (_ri, _mi2, _si), (_re, _me3, _se), (_rk, _mk, _sk)
+            for _r2, _m2, _s2 in [(_ri, _mi2, _si), (_re, _me3, _se), (_rk, _mk, _sk)]:
+                if _m2 is not None:
+                    _xm2 = (_r2 >= _ccbk_xmin) & (_r2 <= _ccbk_xmax)
+                    if _xm2.any():
+                        _ccbk_ymin_col[_col] = min(_ccbk_ymin_col[_col], (_m2 - _s2)[_xm2].min())
+                        _ccbk_ymax_col[_col] = max(_ccbk_ymax_col[_col], (_m2 + _s2)[_xm2].max())
+
+    fig_ccbk, axes_ccbk = plt.subplots(2, 2, figsize=(9, 7), sharex=True, sharey=False, squeeze=False)
+    fig_ccbk.subplots_adjust(hspace=0.16, wspace=0.12, bottom=0.19)
+
+    for _ci, (_col, _clabel) in enumerate(zip(corr_cols, corr_labels)):
+        _row, _pcol = divmod(_ci, 2)
+        _ax = axes_ccbk[_row][_pcol]
+
+        for _t in _ccbk_types:
+            _ls   = _ccbk_styles.get(_t, '-')
+            _tcol = colors.get(_t, 'k')
+            (_ri, _mi2, _si), (_re, _me3, _se), (_rk, _mk, _sk) = _ccbk_cache[(_t, _col)]
+
+            if _ri is not None:
+                _xm = (_ri >= _ccbk_xmin) & (_ri <= _ccbk_xmax)
+                _ax.plot(_ri[_xm], _mi2[_xm], color=_tcol, linewidth=1.5, linestyle=_ls,
+                         label=_t.capitalize() if _ci == 0 else '_', zorder=2)
+                _ax.fill_between(_ri[_xm], (_mi2 - _si)[_xm], (_mi2 + _si)[_xm],
+                                 color=_tcol, alpha=0.2, zorder=2)
+            if _re is not None:
+                _xm = (_re >= _ccbk_xmin) & (_re <= _ccbk_xmax)
+                _ax.plot(_re[_xm], _me3[_xm], color='black', linewidth=1.5, linestyle=_ls, zorder=3)
+                _ax.fill_between(_re[_xm], (_me3 - _se)[_xm], (_me3 + _se)[_xm],
+                                 color='black', alpha=0.15, zorder=3)
+            if _rk is not None:
+                _xm = (_rk >= _ccbk_xmin) & (_rk <= _ccbk_xmax)
+                _ax.plot(_rk[_xm], _mk[_xm], color=_ccbk_theor_color, linewidth=1.5, linestyle=_ls, zorder=1)
+                _ax.fill_between(_rk[_xm], (_mk - _sk)[_xm], (_mk + _sk)[_xm],
+                                 color=_ccbk_theor_color, alpha=0.2, zorder=1)
+
+        _ypad = (_ccbk_ymax_col[_col] - _ccbk_ymin_col[_col]) * 0.05
+        _ax.set_ylim(_ccbk_ymin_col[_col] - _ypad, _ccbk_ymax_col[_col] + _ypad)
+        _ax.set_xlim(_ccbk_xmin - _ccbk_xpad, _ccbk_xmax + _ccbk_xpad)
+        _ax.axhline(0, color='gray', linewidth=1, linestyle='--')
+        _ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:.1f}'))
+        _ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=4))
+        _ax.tick_params(axis='both', labelsize=12)
+        _ax.text(0.97, 0.05, f'({chr(ord("a") + _ci)})', transform=_ax.transAxes,
+                 fontsize=12, ha='right', va='bottom')
+        if _row == 1:
+            _ax.set_xlabel('r [Å]', fontsize=13)
+        if _pcol == 1:
+            _ax.set_ylabel(_clabel, fontsize=12)
+            _ax.yaxis.set_label_position('right')
+            _ax.yaxis.tick_right()
+        else:
+            _ax.set_ylabel(_clabel, fontsize=12)
+
+    axes_ccbk[0][0].set_xticks(range(42, 60, 4))
+    axes_ccbk[0][0].legend(fontsize=11)
+    fig_title(fig_ccbk, 'Orientational correlations — best-κ implicit vs explicit', fontweight='bold')
+    fig_ccbk.savefig(plot_dir / 'multipole_corr_best_kappa.png', dpi=150, bbox_inches='tight')
+    plt.close(fig_ccbk)
+    print("Saved multipole_corr_best_kappa.png")
 
 # ── 9. Summary table: RDF first-peak statistics ───────────────────────────────
 print("\n── RDF first-peak summary ──")
