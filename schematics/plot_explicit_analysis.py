@@ -350,6 +350,56 @@ fig.savefig(plot_dir / 'pressure_components.png', dpi=150, bbox_inches='tight')
 plt.close(fig)
 print("Saved pressure_components.png")
 
+# ── 3b. Pressure breakdown — diverging stacked bar ────────────────────────────
+# (col: DataFrame key, label: legend display, color)
+stack_comps = [
+    ('Na',       r'Na$^+$', '#60b4ff'),
+    ('Cl',       r'Cl$^-$', '#ffb347'),
+    ('macroion', 'CPPM',    '#6ddc9e'),
+    ('excess',   'Excess',  '#ff7f7f'),
+]
+
+x3 = np.arange(len(non_bulk_types))
+fig, ax = plt.subplots(figsize=(6, 4.5))
+
+bottoms_pos = np.zeros(len(non_bulk_types))
+bottoms_neg = np.zeros(len(non_bulk_types))
+for col, label, color in stack_comps:
+    vals = np.array([delta_mean.loc[t, col] for t in non_bulk_types])
+    pos  = np.where(vals > 0, vals, 0.0)
+    neg  = np.where(vals < 0, vals, 0.0)
+    ax.bar(x3, pos, bottom=bottoms_pos, color=color,
+           label=label, edgecolor='white', linewidth=0.4)
+    ax.bar(x3, neg, bottom=bottoms_neg, color=color,
+           edgecolor='white', linewidth=0.4)
+    bottoms_pos += pos
+    bottoms_neg += neg
+
+tot_vals = np.array([delta_mean.loc[t, 'total'] for t in non_bulk_types])
+tot_errs = np.array([delta_std.loc[t,  'total'] if t in delta_std.index else 0.0
+                     for t in non_bulk_types])
+ax.errorbar(x3, tot_vals, yerr=tot_errs, fmt='D', color='black',
+            markersize=5, capsize=3, lw=1.2, label='Total', zorder=5)
+
+ax.axhline(0, color='k', lw=1.5, ls='--')
+ax.set_xticks(x3)
+ax.set_xticklabels([t.capitalize() for t in non_bulk_types], fontsize=11)
+ax.set_ylabel(r'$\Delta p_\mathrm{osm}$ [mM]', fontsize=12)
+
+# auto-extend negative y limit by 15 % to avoid bar/legend overlap
+ymin, ymax = ax.get_ylim()
+ax.set_ylim(ymin * 1.15, ymax*1.15)
+
+leg = ax.legend(frameon=False, fontsize=9,
+                loc='upper center', bbox_to_anchor=(0.5, 1.0),
+                ncol=len(stack_comps) + 1, columnspacing=0.8, handlelength=1.2)
+ax_title(ax, 'Pressure components (ΔP relative to bulk)')
+fig.tight_layout()
+fig.subplots_adjust(top=0.82)
+fig.savefig(plot_dir / 'pressure_stacked.png', dpi=150, bbox_inches='tight')
+plt.close(fig)
+print("Saved pressure_stacked.png")
+
 # ── 4. Ion counts — bar chart ─────────────────────────────────────────────────
 print("Plotting ion counts…")
 count_rows = []
@@ -406,21 +456,58 @@ ionic_rows = []
 for _, row in sim_dirs.iterrows():
     doc  = load_output(row['folder'] / 'output.yaml')
     lD   = debye_length(doc)
+    c_na_i = molarity(doc, 'Na')
+    c_cl_i = molarity(doc, 'Cl')
+    I_i    = 0.5 * (c_na_i + c_cl_i)
+    try:
+        pb = pressure_breakdown(row['folder'])
+        p_ideal_i = pb['Na'] + pb['Cl'] + pb['macroion']
+        p_ex_i    = pb['excess']
+        p_tot_i   = pb['total']
+    except Exception:
+        p_ideal_i = p_ex_i = p_tot_i = float('nan')
     ionic_rows.append({
         'type': row['type'], 'replicate': row['replicate'],
-        '[Na+] / M': molarity(doc, 'Na'),
-        '[Cl-] / M': molarity(doc, 'Cl'),
-        'I / M':    ionic_strength(doc),
-        'λ_D / Å':  lD,
+        '[Na+] / mM':   c_na_i * 1000,
+        '[Cl-] / mM':   c_cl_i * 1000,
+        'I / mM':       I_i    * 1000,
+        'γ_±':          (activity * 1000) / (I_i * 1000) if I_i > 0 else float('nan'),
+        'P_ideal / mM': p_ideal_i,
+        'P_ex / mM':    p_ex_i,
+        'P_tot / mM':   p_tot_i,
+        'λ_D / Å':      lD,
     })
 ionic_raw = pd.DataFrame(ionic_rows)
-_cols     = ['[Na+] / M', '[Cl-] / M', 'I / M', 'λ_D / Å']
+_cols     = ['[Na+] / mM', '[Cl-] / mM', 'I / mM', 'γ_±',
+             'P_ideal / mM', 'P_ex / mM', 'P_tot / mM', 'λ_D / Å']
 _mean_i   = ionic_raw.groupby('type')[_cols].mean()
 _std_i    = ionic_raw.groupby('type')[_cols].std().fillna(0)
 ionic_sum = _mean_i.copy().astype(object)
 for c in _cols:
     ionic_sum[c] = _mean_i[c].map('{:.4f}'.format) + ' ± ' + _std_i[c].map('{:.4f}'.format)
 print(ionic_sum.reindex([t for t in SYS_ORDER if t in ionic_sum.index]))
+
+# Save mean ± std table as CSV (separate mean and error columns, ASCII headers)
+_csv_col_map = {
+    '[Na+] / mM':   'cNa_mM',
+    '[Cl-] / mM':   'cCl_mM',
+    'I / mM':       'I_mM',
+    'γ_±':          'gamma_pm',
+    'P_ideal / mM': 'P_ideal_mM',
+    'P_ex / mM':    'P_ex_mM',
+    'P_tot / mM':   'P_tot_mM',
+    'λ_D / Å':      'lambda_D_A',
+}
+_csv_rows = []
+for t in [t for t in SYS_ORDER if t in _mean_i.index]:
+    row_out = {'type': t}
+    for c in _cols:
+        key = _csv_col_map[c]
+        row_out[key]          = _mean_i.loc[t, c]
+        row_out[key + '_err'] = _std_i.loc[t, c]
+    _csv_rows.append(row_out)
+pd.DataFrame(_csv_rows).to_csv(plot_dir / 'ionic_pressure_table.csv', index=False, float_format='%.6g')
+print("Saved ionic_pressure_table.csv")
 
 # ── 6. Macroion–macroion RDF overlay ─────────────────────────────────────────
 print("\nPlotting macroion–macroion RDF overlay…")
