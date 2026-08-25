@@ -963,6 +963,24 @@ for _ion_fname, _ion_label, _ion_outname in _ion_rdf_specs:
                             color=_ion_col, alpha=0.2)
         _ion_has_data = True
 
+    # Bulk system: Na–Cl only, no geometric NP correction
+    if _ion_fname == 'rdf-na-cl.csv':
+        _bulk_fldrs = list(iter_explicit_folders('bulk'))
+        _r_bulk, _g_bulk, _gsem_bulk = replica_mean_sem(
+            _bulk_fldrs,
+            lambda f: (
+                pd.read_csv(gzip.open(f / 'rdf-nacl.csv.gz', 'rt')) if (f / 'rdf-nacl.csv.gz').exists()
+                else (pd.read_csv(f / 'rdf-nacl.csv') if (f / 'rdf-nacl.csv').exists() else None)
+            ),
+            'g(r)',
+        )
+        if _r_bulk is not None:
+            ax_ion.plot(_r_bulk, _g_bulk, color='k', linewidth=1.5,
+                        linestyle='-', label='Bulk')
+            ax_ion.fill_between(_r_bulk, _g_bulk - _gsem_bulk, _g_bulk + _gsem_bulk,
+                                color='k', alpha=0.2)
+            _ion_has_data = True
+
     if not _ion_has_data:
         plt.close(fig_ion)
         print(f"  Skipped {_ion_outname}.png — no data found")
@@ -1384,12 +1402,12 @@ if _mebk_types:
     print("Saved multipole_energy_best_kappa.png")
 
 # ── 8. Orientational correlations ─────────────────────────────────────────────
-corr_cols   = ['mucorr', 'long', 'quadcorr_norm', 'p2']
+corr_cols   = ['mucorr', 'long', 'p2', 'quadcorr_norm']
 corr_labels = [
     r'Dipole correlation',#, $\langle\hat{\mu}_i\cdot\hat{\mu}_j\rangle$',
     r'Longitudinal projection',#, $\langle(\hat{\mu}_i\cdot\hat{R})(\hat{\mu}_i\cdot\hat{R})\rangle$',
-    r'Quadrupole correlation',#, $\langle\hat{\Phi}_i:\hat{\Phi}_j\rangle$',
     r'Nematic order',#, $\langle{(3}\mathrm{cos}^2\,\theta-1)/{2}\rangle$',
+    r'Quadrupole correlation',#, $\langle\hat{\Phi}_i:\hat{\Phi}_j\rangle$',
 ]
 
 for sys_type, items in sorted(folders_by_type.items()):
@@ -1601,6 +1619,7 @@ if len(_corr_types) >= 2:
                                  color='black', alpha=0.15)
 
             _ax.axhline(0, color='gray', linewidth=1, linestyle='--')
+            _ax.set_ylim((-0.1, 0.28) if _row == 0 else (-0.28, 0.1))
             _ax.set_xlim(_cr_xmin - _cr_xpad, _cr_xmax + _cr_xpad)
             _ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:.1f}'))
             _ax.yaxis.set_major_locator(plt.MaxNLocator(nbins=4))
