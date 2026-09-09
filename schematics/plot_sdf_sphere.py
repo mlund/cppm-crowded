@@ -119,29 +119,30 @@ def make_interpolator(coords, data):
     )
 
 
-def _xyz(r, theta_g, phi_g):
+def _xyz(r, theta_g, phi_g, swap_xz: bool = False):
     x = r * np.sin(theta_g) * np.cos(phi_g)
     y = r * np.sin(theta_g) * np.sin(phi_g)
     z = r * np.cos(theta_g)
-    return np.stack([x, y, z], axis=-1)
+    # swap_xz corrects .dx files written x-fastest (faunus-rs bug pre-v3.0.0-beta.3)
+    return np.stack([z, y, x], axis=-1) if swap_xz else np.stack([x, y, z], axis=-1)
 
 
-def sample_shell(interp, theta_g, phi_g, r_ref: float) -> np.ndarray:
-    return interp(_xyz(r_ref, theta_g, phi_g))
+def sample_shell(interp, theta_g, phi_g, r_ref: float, swap_xz: bool = False) -> np.ndarray:
+    return interp(_xyz(r_ref, theta_g, phi_g, swap_xz))
 
 
 def sample_peak(interp, theta_g, phi_g, r_min: float, r_max: float,
-                n: int = 80) -> np.ndarray:
+                n: int = 80, swap_xz: bool = False) -> np.ndarray:
     rho = np.zeros(theta_g.shape)
     for r in np.linspace(r_min, r_max, n):
-        rho = np.maximum(rho, interp(_xyz(r, theta_g, phi_g)))
+        rho = np.maximum(rho, interp(_xyz(r, theta_g, phi_g, swap_xz)))
     return rho
 
 
 def sample_integrated(interp, theta_g, phi_g, r_min: float, r_max: float,
-                      n: int = 80) -> np.ndarray:
+                      n: int = 80, swap_xz: bool = False) -> np.ndarray:
     r_vals = np.linspace(r_min, r_max, n)
-    stack = np.array([interp(_xyz(r, theta_g, phi_g)) for r in r_vals])
+    stack = np.array([interp(_xyz(r, theta_g, phi_g, swap_xz)) for r in r_vals])
     return np.trapz(stack, r_vals, axis=0)
 
 
@@ -426,6 +427,8 @@ def main():
                    help="Diverging norm pivot (e.g. 1.0 = bulk); use with RdBu_r")
 
     g = p.add_argument_group("Common")
+    g.add_argument("--swap-xz", action="store_true",
+                   help="Correct x↔z axis swap in .dx files from faunus-rs pre-v3.0.0-beta.3")
     g.add_argument("--smooth", type=float, default=1.5,
                    help="Gaussian smoothing σ on angular map (0 = off)")
     g.add_argument("--resolution", "-r", type=int, default=150,
@@ -450,11 +453,11 @@ def main():
         interp = make_interpolator(coords, data)
 
         if args.mode == "shell":
-            rho = sample_shell(interp, theta_g, phi_g, args.r_ref)
+            rho = sample_shell(interp, theta_g, phi_g, args.r_ref, args.swap_xz)
         elif args.mode == "peak":
-            rho = sample_peak(interp, theta_g, phi_g, args.r_min, args.r_max)
+            rho = sample_peak(interp, theta_g, phi_g, args.r_min, args.r_max, swap_xz=args.swap_xz)
         else:
-            rho = sample_integrated(interp, theta_g, phi_g, args.r_min, args.r_max)
+            rho = sample_integrated(interp, theta_g, phi_g, args.r_min, args.r_max, swap_xz=args.swap_xz)
 
         stem  = path.stem
         label = stem_label(stem)
