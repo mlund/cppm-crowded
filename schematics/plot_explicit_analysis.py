@@ -7,6 +7,7 @@ import yaml
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 from pathlib import Path
 
 parser = argparse.ArgumentParser(description='Analyse explicit CPPM simulations.')
@@ -30,6 +31,14 @@ colors = {
 }
 
 SYS_ORDER = ['bulk', 'isotropic', 'dipolar', 'quadrupolar', 'neutral']
+
+SYS_LABEL = {
+    'bulk':        'Bulk',
+    'isotropic':   r'Isotropic, $P^{0}_{0}$',
+    'dipolar':     r'Dipolar, $P^{1}_{8}$',
+    'quadrupolar': r'Quadrupolar, $P^{2}_{8}$',
+    'neutral':     r'Neutral, $P^{\mathrm{n}}$',
+}
 
 
 def ax_title(ax, text, **kw):
@@ -341,9 +350,9 @@ for i, sys_type in enumerate(non_bulk_types):
 
 ax.axhline(0, color='k', lw=0.5, ls=':')
 ax.set_xticks(x)
-ax.set_xticklabels(comps, fontsize=12)
-ax.set_ylabel(r'$\Delta P$ / mM  (relative to bulk)', fontsize=12)
-ax.legend(frameon=False, fontsize=10)
+ax.set_xticklabels(comps, fontsize=13)
+ax.set_ylabel(r'$\Delta P$ / mM  (relative to bulk)', fontsize=14)
+ax.legend(frameon=False, fontsize=12)
 ax_title(ax, 'Pressure components (ΔP relative to bulk) — triplicate averages')
 fig.tight_layout()
 fig.savefig(plot_dir / 'pressure_components.png', dpi=150, bbox_inches='tight')
@@ -355,23 +364,32 @@ print("Saved pressure_components.png")
 stack_comps = [
     ('Na',       r'Na$^+$', '#60b4ff'),
     ('Cl',       r'Cl$^-$', '#ffb347'),
-    ('macroion', 'CPPM',    '#6ddc9e'),
+    ('macroion', 'Macro-ion',    '#6ddc9e'),
     ('excess',   'Excess',  '#ff7f7f'),
 ]
 
 x3 = np.arange(len(non_bulk_types))
-fig, ax = plt.subplots(figsize=(6, 4.5))
+fig, ax = plt.subplots(figsize=(7, 8))
 
 bottoms_pos = np.zeros(len(non_bulk_types))
 bottoms_neg = np.zeros(len(non_bulk_types))
+bar_segs = []  # (col, i, actual_val, sem, rect)
+
 for col, label, color in stack_comps:
     vals = np.array([delta_mean.loc[t, col] for t in non_bulk_types])
+    sems = np.array([delta_std.loc[t, col] if t in delta_std.index else 0.0
+                     for t in non_bulk_types])
     pos  = np.where(vals > 0, vals, 0.0)
     neg  = np.where(vals < 0, vals, 0.0)
-    ax.bar(x3, pos, bottom=bottoms_pos, color=color,
-           label=label, edgecolor='white', linewidth=0.4)
-    ax.bar(x3, neg, bottom=bottoms_neg, color=color,
-           edgecolor='white', linewidth=0.4)
+    bars_pos = ax.bar(x3, pos, bottom=bottoms_pos, color=color,
+                      label=label, edgecolor='white', linewidth=0.4, alpha=0.95)
+    bars_neg = ax.bar(x3, neg, bottom=bottoms_neg, color=color,
+                      edgecolor='white', linewidth=0.4, alpha=0.95)
+    for i in range(len(non_bulk_types)):
+        if pos[i] != 0:
+            bar_segs.append((col, i, float(vals[i]), float(sems[i]), bars_pos[i]))
+        if neg[i] != 0:
+            bar_segs.append((col, i, float(vals[i]), float(sems[i]), bars_neg[i]))
     bottoms_pos += pos
     bottoms_neg += neg
 
@@ -379,20 +397,83 @@ tot_vals = np.array([delta_mean.loc[t, 'total'] for t in non_bulk_types])
 tot_errs = np.array([delta_std.loc[t,  'total'] if t in delta_std.index else 0.0
                      for t in non_bulk_types])
 ax.errorbar(x3, tot_vals, yerr=tot_errs, fmt='D', color='black',
-            markersize=5, capsize=3, lw=1.2, label='Total', zorder=5)
+            markersize=7, capsize=3, lw=1.2, label='Total', zorder=5,
+            )
 
-ax.axhline(0, color='k', lw=1.5, ls='--')
+ax.set_axisbelow(True)
+ax.axhline(0, color='black', lw=1.5, ls='--')
 ax.set_xticks(x3)
-ax.set_xticklabels([t.capitalize() for t in non_bulk_types], fontsize=11)
-ax.set_ylabel(r'$\Delta p_\mathrm{osm}$ [mM]', fontsize=12)
+ax.set_xticklabels([SYS_LABEL.get(t, t) for t in non_bulk_types], fontsize=12)
+ax.set_ylabel(r'$\Delta p_\mathrm{osm} = p_\mathrm{osm}^{\mathrm{system}} - p_\mathrm{osm}^{\mathrm{bulk}}$ [mM]', fontsize=14)
 
 # auto-extend negative y limit by 15 % to avoid bar/legend overlap
 ymin, ymax = ax.get_ylim()
-ax.set_ylim(ymin * 1.15, ymax*1.15)
+ax.set_ylim(ymin * 1.2, ymax * 1.2)
 
-leg = ax.legend(frameon=False, fontsize=9,
-                loc='upper center', bbox_to_anchor=(0.5, 1.0),
-                ncol=len(stack_comps) + 1, columnspacing=0.8, handlelength=1.2)
+# Black outline around the combined ideal (Na + Cl + macroion) block
+_ideal_cols = ['Na', 'Cl', 'macroion']
+_bar_w = bar_segs[0][4].get_width() if bar_segs else 0.8
+ylo, yhi = ax.get_ylim()
+_txt_pad = (yhi - ylo) * 0.01
+for i, t in enumerate(non_bulk_types):
+    _ideal_pos = sum(max(delta_mean.loc[t, c], 0) for c in _ideal_cols)
+    _ideal_neg = sum(min(delta_mean.loc[t, c], 0) for c in _ideal_cols)
+    _ideal_sum = _ideal_pos + _ideal_neg
+    _ideal_sem = np.sqrt(sum(
+        (delta_std.loc[t, c] if t in delta_std.index else 0.0) ** 2
+        for c in _ideal_cols))
+    _x_left = x3[i] - _bar_w / 2
+    if _ideal_pos > 0:
+        ax.add_patch(mpatches.Rectangle(
+            (_x_left, 0), _bar_w, _ideal_pos,
+            fill=False, edgecolor='dimgray', linewidth=1.5, zorder=6))
+    if _ideal_neg < 0:
+        ax.add_patch(mpatches.Rectangle(
+            (_x_left, _ideal_neg), _bar_w, -_ideal_neg,
+            fill=False, edgecolor='dimgray', linewidth=1.5, zorder=6))
+    _y_text = min(0, _ideal_neg) - _txt_pad
+    ax.text(x3[i], _y_text, f'{_ideal_sum:.2f} $\\pm$ {_ideal_sem:.2f}',
+            ha='center', va='top', color='black', fontsize=9)
+
+for col, i, val, sem, rect in bar_segs:
+    h = rect.get_height()
+    label_str = f'{val:.2f}' if col == 'macroion' else f'{val:.2f} $\\pm$ {sem:.2f}'
+    if col == 'excess':
+        ylo, yhi = ax.get_ylim()
+        _pad = (yhi - ylo) * 0.01
+        ax.text(x3[i], rect.get_y() + h - _pad, label_str,
+                ha='center', va='top', color='white', fontsize=9)
+    else:
+        ax.text(x3[i], rect.get_y() + h / 2, label_str,
+                ha='center', va='center', color='white', fontsize=9)
+
+ax2 = ax.twinx()
+ax2.set_ylim(ax.get_ylim())
+ax2.yaxis.set_major_locator(ax.yaxis.get_major_locator())
+ax2.set_yticklabels([])
+ax2.set_ylabel('')
+
+_handles, _labels = ax.get_legend_handles_labels()
+_ldict = dict(zip(_labels, _handles))
+
+_ideal_lbls = [r'Na$^+$', r'Cl$^-$', 'Macro-ion']
+_other_lbls  = ['Total', 'Excess']
+
+leg_other = ax.legend(
+    [_ldict[l] for l in _other_lbls if l in _ldict], _other_lbls,
+    frameon=False, fontsize=11, ncol=2,
+    loc='upper left', bbox_to_anchor=(0.22, 0.96),
+    columnspacing=0.8, handlelength=1.2)
+
+leg_ideal = ax.legend(
+    [_ldict[l] for l in _ideal_lbls if l in _ldict], _ideal_lbls,
+    title='Ideal', title_fontsize=11,
+    frameon=True, edgecolor='black', fancybox=False,
+    fontsize=11, ncol=3,
+    loc='upper right', bbox_to_anchor=(1.0, 1.0),
+    columnspacing=0.8, handlelength=1.2)
+
+ax.add_artist(leg_other)
 ax_title(ax, 'Pressure components (ΔP relative to bulk)')
 fig.tight_layout()
 fig.subplots_adjust(top=0.82)
@@ -441,9 +522,9 @@ for j_idx, (ion, hatch, label) in enumerate([('Na', '', 'Na$^+$'), ('Cl', '///',
 ax.axhline(bulk_N_Na, color='black', lw=1.2, ls='--',
            label=fr'bulk Na$^+$=Cl$^-$ ({bulk_N_Na:.0f})')
 ax.set_xticks(x2)
-ax.set_xticklabels(_ion_types)
+ax.set_xticklabels([SYS_LABEL.get(t, t) for t in _ion_types])
 ax.set_ylabel(r'$\langle N \rangle$')
-ax.legend(frameon=False, fontsize=10)
+ax.legend(frameon=False, fontsize=12)
 ax_title(ax, 'Ion counts — triplicate averages')
 fig.tight_layout()
 fig.savefig(plot_dir / 'ion_counts.png', dpi=150, bbox_inches='tight')
@@ -523,9 +604,9 @@ for sys_type in [t for t in SYS_ORDER if t != 'bulk']:
     ax.fill_between(r, g_mean - g_sem, g_mean + g_sem, color=col, alpha=0.2)
 
 ax.axhline(1.0, color='gray', lw=0.6, ls='--')
-ax.set_xlabel('r [Å]', fontsize=12)
-ax.set_ylabel('g(r)', fontsize=12)
-ax.legend(frameon=False, fontsize=10)
+ax.set_xlabel('r [Å]', fontsize=14)
+ax.set_ylabel('g(r)', fontsize=14)
+ax.legend(frameon=False, fontsize=12)
 ax_title(ax, 'Macroion–macroion RDF — triplicate mean ± SEM')
 fig.tight_layout()
 fig.savefig(plot_dir / 'rdf_macroion_overlay.png', dpi=150, bbox_inches='tight')
@@ -553,9 +634,9 @@ for ax, (fname, label, _) in zip(axes, ion_rdf_specs):
         col = colors[sys_type]
         ax.plot(r, g_mean, color=col, lw=1.5, label=sys_type.capitalize())
         ax.fill_between(r, g_mean - g_sem, g_mean + g_sem, color=col, alpha=0.2)
-    ax.set_xlabel('r [Å]', fontsize=12)
-    ax.set_ylabel(f'{label}  g(r)', fontsize=11)
-    ax.legend(frameon=False, fontsize=9)
+    ax.set_xlabel('r [Å]', fontsize=14)
+    ax.set_ylabel(f'{label}  g(r)', fontsize=13)
+    ax.legend(frameon=False, fontsize=11)
 
 fig_title(fig, 'Ion–NP pair RDFs — triplicate mean ± SEM')
 fig.tight_layout()
@@ -594,9 +675,9 @@ for row_idx, sys_type in enumerate(sys_types_all):
         ax.plot(steps, U,    color=col, lw=0.6, alpha=0.35)
         ax.plot(steps, cumm, color=col, lw=1.8)
         if col_idx == 0:
-            ax.set_ylabel(r'$U_\mathrm{total}$ / $k_\mathrm{B}T$', fontsize=11)
-        ax.set_xlabel('MC step', fontsize=11)
-        ax.set_title(f'{sys_type} — replica {col_idx + 1}', fontsize=10)
+            ax.set_ylabel(r'$U_\mathrm{total}$ / $k_\mathrm{B}T$', fontsize=13)
+        ax.set_xlabel('MC step', fontsize=13)
+        ax.set_title(f'{sys_type} — replica {col_idx + 1}', fontsize=12)
         ax.xaxis.set_major_formatter(step_fmt)
 
 fig_title(fig, 'Energy vs MC steps — convergence check', fontweight='bold')

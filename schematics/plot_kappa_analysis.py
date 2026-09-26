@@ -17,15 +17,28 @@ parser.add_argument('plots', help='Path to the output folder for plots')
 parser.add_argument('--no-titles', action='store_true', help='Suppress all plot titles and suptitles')
 parser.add_argument('--rdf-rmax', type=float, default=None,
                     help='Upper bound of r [Å] used when computing the RMSD for best-kappa selection (default: no limit)')
-parser.add_argument('--peak', action='store_true',
-                    help='Select best kappa by matching the g(r) peak height to explicit, instead of full-range RMSD')
+parser.add_argument('--fit-mode', choices=['peak', 'rmsd', 'weighted'], default='rmsd',
+                    help='Objective for best-kappa and PY fits: '
+                         'peak = match g(r) peak height; '
+                         'rmsd = minimise RMSD of g(r); '
+                         'weighted = minimise RMSD of g(r)·r² (upweights long-range tail). '
+                         '(default: rmsd)')
 parser.add_argument('--np-radius', type=float, default=20.0,
                     help='NP radius R [Å] (default: 20 = sigma_MP/2). Sets the CPPM–CPPM lower r '
                          'limit to 2R (the MP contact diameter = 40 Å).')
 parser.add_argument('--ion-radius', type=float, default=2.0,
                     help='Ion radius [Å] (default: 2 = sigma_ion/2). Combined with --np-radius to '
                          'give R_eff = R + r_ion used in the ion-pair RDF geometric correction.')
+parser.add_argument('--bead-diameter', type=float, default=4.0,
+                    help='Diameter [Å] of the surface decoration beads on the NP (default: 4). '
+                         'Sets the upper bound of the PY hard-sphere sigma search to '
+                         '2·R_NP + bead_diameter.')
+parser.add_argument('--plot-rmax', type=float, default=None,
+                    help='Maximum r [Å] for the mask applied to plotted RDF data (default: full data range). '
+                         'Example: --plot-rmax 60')
 args = parser.parse_args()
+_plot_rmax = args.plot_rmax if args.plot_rmax is not None else np.inf
+_plot_rmax_lim = _plot_rmax + 0.4 if np.isfinite(_plot_rmax) else None
 r_np  = args.np_radius
 r_eff = args.np_radius + args.ion_radius  # effective exclusion radius for ion-pair RDF correction
 
@@ -280,22 +293,26 @@ def find_best_kappa_rdf(folders_by_type):
         groups = group_by_kappa(items)
         kappa_list, score_list = [], []
 
-        peak_exp = float(g_exp.max()) if args.peak else None
+        peak_exp = float(g_exp.max()) if args.fit_mode == 'peak' else None
 
         for kappa, folders in groups.items():
             r_imp, g_imp, _ = replica_mean_sem(folders, load_rdf, 'g(r)')
             if r_imp is None:
                 continue
-            if args.peak:
+            if args.fit_mode == 'peak':
                 score = abs(float(g_imp.max()) - peak_exp)
             else:
-                mask    = r_imp >= 2 * r_np
+                mask = r_imp >= 2 * r_np
                 if args.rdf_rmax is not None:
                     mask &= r_imp <= args.rdf_rmax
                 r_plot  = r_imp[mask]
                 g_imp_p = g_imp[mask]
                 g_exp_p = np.interp(r_plot, r_exp, g_exp)
-                score   = np.sqrt(np.mean((g_imp_p - g_exp_p) ** 2))
+                if args.fit_mode == 'weighted':
+                    w = r_plot ** 2
+                    score = np.sqrt(np.mean((w * (g_imp_p - g_exp_p)) ** 2))
+                else:
+                    score = np.sqrt(np.mean((g_imp_p - g_exp_p) ** 2))
             kappa_list.append(kappa)
             score_list.append(score)
 
@@ -307,7 +324,7 @@ def find_best_kappa_rdf(folders_by_type):
         best_idx  = int(np.argmin(score_arr))
         best_kappas[sys_type] = kappa_arr[best_idx]
 
-        metric_label = 'peak |Δg|' if args.peak else 'RDF RMSD'
+        metric_label = {'peak': 'peak |Δg|', 'rmsd': 'RDF RMSD', 'weighted': 'RDF RMSD·r²'}[args.fit_mode]
         try:
             f_score      = interp1d(kappa_arr, score_arr, kind='cubic')
             k_fine       = np.linspace(kappa_arr[0], kappa_arr[-1], 10000)
@@ -397,7 +414,7 @@ for _st, _bk in best_kappas.items():
     _re, _ge, _ges = replica_mean_sem(list(iter_explicit_folders(_st)), load_rdf, 'g(r)')
     if _ri is None or _re is None:
         continue
-    _mk = (_ri >= 2 * r_np) & (_ri <= 60)
+    _mk = (_ri >= 2 * r_np) & (_ri <= _plot_rmax)
     _rp = _ri[_mk]; _gmp = _gm[_mk]; _gsp = _gs[_mk]
     _gep = np.interp(_rp, _re, _ge); _gesp = np.interp(_rp, _re, _ges)
     _res = _gmp - _gep; _rerr = np.sqrt(_gsp**2 + _gesp**2)
@@ -411,7 +428,7 @@ for _st, _bk in best_kappas.items():
         _rek, _gek, _gesk = replica_mean_sem(_ekf, load_rdf, 'g(r)')
         if _rek is None:
             continue
-        _mkek = (_rek >= 2 * r_np) & (_rek <= 60)
+        _mkek = (_rek >= 2 * r_np) & (_rek <= _plot_rmax)
         _gekp = _gek[_mkek]; _geskp = _gesk[_mkek]
         _rekp = _rek[_mkek]
         _resek = _gekp - np.interp(_rekp, _re, _ge)
@@ -440,7 +457,7 @@ for sys_type, best_kappa in best_kappas.items():
         print(f"  Warning: missing RDF data for {sys_type} comparison")
         continue
 
-    mask     = (r_imp >= 2 * r_np) & (r_imp <= 60)
+    mask     = (r_imp >= 2 * r_np) & (r_imp <= _plot_rmax)
     r_plot   = r_imp[mask]
     g_imp_p  = g_imp[mask]
     g_sem_p  = g_imp_sem[mask]
@@ -472,7 +489,7 @@ for sys_type, best_kappa in best_kappas.items():
     if _ek_folders:
         _r_ek, _g_ek, _g_ek_sem = replica_mean_sem(_ek_folders, load_rdf, 'g(r)')
         if _r_ek is not None:
-            _mask_ek = (_r_ek >= 2 * r_np) & (_r_ek <= 60)
+            _mask_ek = (_r_ek >= 2 * r_np) & (_r_ek <= _plot_rmax)
             _r_ek_p  = _r_ek[_mask_ek]
             _g_ek_p  = _g_ek[_mask_ek]
             _g_ek_sp = _g_ek_sem[_mask_ek]
@@ -491,7 +508,7 @@ for sys_type, best_kappa in best_kappas.items():
 
     ax_top.axhline(1.0, color='gray', linewidth=0.6, linestyle=':')
     ax_top.set_ylabel('g(r)', fontsize=11)
-    ax_top.set_xlim(2 * r_np - 0.4, 60 + 0.4)
+    ax_top.set_xlim(2 * r_np - 0.4, _plot_rmax_lim)
     ax_top.xaxis.set_major_locator(plt.MultipleLocator(4))
     ax_top.legend(fontsize=9)
 
@@ -539,7 +556,7 @@ if _bk_order:
         if _br_imp is None or _br_exp is None:
             continue
 
-        _bmask    = (_br_imp >= 2 * r_np) & (_br_imp <= 60)
+        _bmask    = (_br_imp >= 2 * r_np) & (_br_imp <= _plot_rmax)
         _br       = _br_imp[_bmask]
         _bg_imp_p = _bg_imp[_bmask]
         _bg_sem_p = _bg_imp_sem[_bmask]
@@ -573,7 +590,7 @@ if _bk_order:
         _br_ek, _bg_ek, _bg_ek_sem = replica_mean_sem(_ek_folders, load_rdf, 'g(r)')
         if _br_ek is None:
             continue
-        _bmask_ek = (_br_ek >= 2 * r_np) & (_br_ek <= 60)
+        _bmask_ek = (_br_ek >= 2 * r_np) & (_br_ek <= _plot_rmax)
         _br_ek_p  = _br_ek[_bmask_ek]
         _bg_ek_p  = _bg_ek[_bmask_ek]
         _bg_ek_sp = _bg_ek_sem[_bmask_ek]
@@ -590,7 +607,7 @@ if _bk_order:
 
     _bax_t.axhline(1.0, color='gray', linewidth=0.6, linestyle=':')
     _bax_t.set_ylabel('g(r)', fontsize=11)
-    _bax_t.set_xlim(2 * r_np - 0.4, 60 + 0.4)
+    _bax_t.set_xlim(2 * r_np - 0.4, _plot_rmax_lim)
     _bax_t.xaxis.set_major_locator(plt.MultipleLocator(4))
     _bax_t.legend(fontsize=9)
 
@@ -640,7 +657,7 @@ if len(_p2_order) > 0:
         if _p2ri is None or _p2re is None:
             continue
 
-        _p2mk   = (_p2ri >= 2 * r_np) & (_p2ri <= 60)
+        _p2mk   = (_p2ri >= 2 * r_np) & (_p2ri <= _plot_rmax)
         _p2rp   = _p2ri[_p2mk]
         _p2gip  = _p2gi[_p2mk];  _p2sip  = _p2si[_p2mk]
         _p2gep  = np.interp(_p2rp, _p2re, _p2ge)
@@ -663,13 +680,13 @@ if len(_p2_order) > 0:
         if _p2_ekf:
             _p2rek, _p2gek, _p2sek = replica_mean_sem(_p2_ekf, load_rdf, 'g(r)')
             if _p2rek is not None:
-                _p2mkek  = (_p2rek >= 2 * r_np) & (_p2rek <= 60)
+                _p2mkek  = (_p2rek >= 2 * r_np) & (_p2rek <= _plot_rmax)
                 _p2rekp  = _p2rek[_p2mkek]
                 _p2gekp  = _p2gek[_p2mkek]; _p2sekp = _p2sek[_p2mkek]
                 _p2resek  = _p2gekp - np.interp(_p2rekp, _p2re, _p2ge)
                 _p2reserr = np.sqrt(_p2sekp**2 + np.interp(_p2rekp, _p2re, _p2se)**2)
                 _p2ekval  = exp_kappa_val_by_type.get(_p2t)
-                _p2eklbl  = f'Implicit κ⁻¹={1/_p2ekval:.1f} Å (exp. κ)' if _p2ekval else 'Implicit (exp. κ)'
+                _p2eklbl  = f'Implicit κ⁻¹={1/_p2ekval:.1f} Å (exp. κ⁻¹)' if _p2ekval else 'Implicit (exp. κ⁻¹)'
                 _p2ax.plot(_p2rekp, _p2gekp, color=_p2_theor_color, linewidth=1.5,
                            linestyle=_p2ls, zorder=1, label=_p2eklbl)
                 _p2ax.fill_between(_p2rekp, _p2gekp - _p2sekp, _p2gekp + _p2sekp,
@@ -681,7 +698,7 @@ if len(_p2_order) > 0:
 
         _p2ax.axhline(1.0, color='gray', linewidth=0.6, linestyle=':')
         _p2ax.set_ylim(_gylim_top)
-        _p2ax.set_xlim(2 * r_np - 0.4, 60 + 0.4)
+        _p2ax.set_xlim(2 * r_np - 0.4, _plot_rmax_lim)
         _p2ax.xaxis.set_major_locator(plt.MultipleLocator(4))
         _p2ax.legend(fontsize=7.5)
         ax_title(_p2ax, _p2t.capitalize(), fontweight='bold')
@@ -719,6 +736,127 @@ if len(_p2_order) > 0:
     plt.close(_p2_fig)
     print("Saved best_kappa_comparison_panel.png")
 
+# ── 2b3. 1×3 panel: isotropic | dipolar | quadrupolar, each with residuals ─────
+print("\nPlotting 1×3 panel (isotropic | dipolar | quadrupolar)...")
+_p3_order = [t for t in ('isotropic', 'dipolar', 'quadrupolar') if t in best_kappas]
+
+if _p3_order:
+    _p3_fig = plt.figure(figsize=(13, 6))
+    _p3_gs  = _p3_fig.add_gridspec(2, 3, height_ratios=[2, 1], hspace=0.06, wspace=0.08)
+
+    # Share y within each row, share x within each column
+    _p3_ax = {}
+    for _r in range(2):
+        for _c in range(3):
+            sharey_ax = _p3_ax.get((_r, 0)) if _c > 0 else None
+            sharex_ax = _p3_ax.get((0, _c)) if _r > 0 else None
+            _p3_ax[(_r, _c)] = _p3_fig.add_subplot(
+                _p3_gs[_r, _c], sharey=sharey_ax, sharex=sharex_ax)
+
+    _p3_theor_color = '#888888'
+
+    for _p3c, _p3t in enumerate(_p3_order):
+        _p3ax_top = _p3_ax[(0, _p3c)]
+        _p3ax_bot = _p3_ax[(1, _p3c)]
+        _p3bk  = best_kappas[_p3t]
+        _p3col = colors.get(_p3t, '#1f77b4')
+        _p3ls  = _bk_styles.get(_p3t, '-')
+
+        _p3_imp_f = group_by_kappa(folders_by_type[_p3t]).get(_p3bk, [])
+        _p3_exp_f = list(iter_explicit_folders(_p3t))
+        _p3ri, _p3gi, _p3si = replica_mean_sem(_p3_imp_f, load_rdf, 'g(r)')
+        _p3re, _p3ge, _p3se = replica_mean_sem(_p3_exp_f, load_rdf, 'g(r)')
+        if _p3ri is None or _p3re is None:
+            continue
+
+        _p3mk   = (_p3ri >= 2 * r_np) & (_p3ri <= _plot_rmax)
+        _p3rp   = _p3ri[_p3mk]
+        _p3gip  = _p3gi[_p3mk];  _p3sip = _p3si[_p3mk]
+        _p3gep  = np.interp(_p3rp, _p3re, _p3ge)
+        _p3sep  = np.interp(_p3rp, _p3re, _p3se)
+        _p3res  = _p3gip - _p3gep
+        _p3rerr = np.sqrt(_p3sip**2 + _p3sep**2)
+
+        # g(r) — best-kappa implicit (colored)
+        _p3h_best, = _p3ax_top.plot(_p3rp, _p3gip, color=_p3col, linewidth=1.5,
+                                    linestyle=_p3ls, zorder=2,
+                                    label=f'Best κ⁻¹={1/_p3bk:.1f} Å')
+        _p3ax_top.fill_between(_p3rp, _p3gip - _p3sip, _p3gip + _p3sip,
+                               color=_p3col, alpha=0.3, zorder=2, lw=0)
+
+        # Explicit (black)
+        _p3h_exp, = _p3ax_top.plot(_p3rp, _p3gep, color='black', linewidth=1.5,
+                                   linestyle=_p3ls, zorder=3, label='Explicit sim.')
+        _p3ax_top.fill_between(_p3rp, _p3gep - _p3sep, _p3gep + _p3sep,
+                               color='black', alpha=0.12, zorder=3, lw=0)
+
+        # Suggested-κ overlay (gray) — κ from explicit equilibration
+        _p3h_sug = None
+        _p3_ekf = exp_kappa_by_type.get(_p3t, [])
+        if _p3_ekf:
+            _p3rek, _p3gek, _p3sek = replica_mean_sem(_p3_ekf, load_rdf, 'g(r)')
+            if _p3rek is not None:
+                _p3mkek   = (_p3rek >= 2 * r_np) & (_p3rek <= _plot_rmax)
+                _p3rekp   = _p3rek[_p3mkek]
+                _p3gekp   = _p3gek[_p3mkek];  _p3sekp = _p3sek[_p3mkek]
+                _p3resek  = _p3gekp - np.interp(_p3rekp, _p3re, _p3ge)
+                _p3reserr = np.sqrt(_p3sekp**2 + np.interp(_p3rekp, _p3re, _p3se)**2)
+                _p3ekval  = exp_kappa_val_by_type.get(_p3t)
+                _p3eklbl  = (f'Suggested κ⁻¹={1/_p3ekval:.1f} Å'
+                             if _p3ekval else 'Suggested κ⁻¹')
+                _p3h_sug, = _p3ax_top.plot(_p3rekp, _p3gekp, color=_p3_theor_color,
+                                           linewidth=1.5, linestyle=_p3ls, zorder=1,
+                                           label=_p3eklbl)
+                _p3ax_top.fill_between(_p3rekp, _p3gekp - _p3sekp, _p3gekp + _p3sekp,
+                                       color=_p3_theor_color, alpha=0.2, zorder=1, lw=0)
+                _p3ax_bot.plot(_p3rekp, _p3resek, color=_p3_theor_color, linewidth=1.5,
+                               linestyle=_p3ls, zorder=1)
+                _p3ax_bot.fill_between(_p3rekp, _p3resek - _p3reserr, _p3resek + _p3reserr,
+                                       color=_p3_theor_color, alpha=0.2, zorder=1, lw=0)
+
+        # Δg(r) residuals
+        _p3ax_bot.plot(_p3rp, _p3res, color=_p3col, linewidth=1.5, linestyle=_p3ls, zorder=2)
+        _p3ax_bot.fill_between(_p3rp, _p3res - _p3rerr, _p3res + _p3rerr,
+                               color=_p3col, alpha=0.3, zorder=2, lw=0)
+
+        _p3ax_top.axhline(1.0, color='gray', linewidth=0.6, linestyle=':')
+        _p3ax_top.set_ylim(_gylim_top)
+        _p3ax_top.set_xlim(2 * r_np - 0.4, _plot_rmax_lim)
+        _p3ax_top.xaxis.set_major_locator(plt.MultipleLocator(4))
+        _p3ax_top.tick_params(labelsize=13)
+
+        # Legend order: Best κ⁻¹, Suggested κ⁻¹, Explicit sim.
+        _p3_leg_h = [_p3h_best] + ([_p3h_sug] if _p3h_sug else []) + [_p3h_exp]
+        _p3ax_top.legend(handles=_p3_leg_h, fontsize=11, frameon=True)
+        ax_title(_p3ax_top, _p3t.capitalize(), fontweight='bold')
+        _p3ax_top.text(0.97, 0.05, f'({chr(ord("a") + _p3c)})', transform=_p3ax_top.transAxes,
+                       fontsize=12, ha='right', va='bottom')
+
+        _p3ax_bot.axhline(0, color='gray', linewidth=0.8, linestyle='--')
+        _p3ax_bot.set_ylim(_gylim_bot)
+        _p3ax_bot.set_xlabel('r [Å]', fontsize=13)
+        _p3ax_bot.xaxis.set_major_locator(plt.MultipleLocator(4))
+        _p3ax_bot.tick_params(labelsize=13)
+
+    # y labels on leftmost column only; align_ylabels pins both to the same x position
+    _p3_ax[(0, 0)].set_ylabel('g(r)', fontsize=13)
+    _p3_ax[(1, 0)].set_ylabel(r'$\Delta g(r)$', fontsize=13)
+    _p3_fig.align_ylabels([_p3_ax[(0, 0)], _p3_ax[(1, 0)]])
+
+    # Hide y tick labels on columns 1 and 2
+    for _r in range(2):
+        for _c in range(1, 3):
+            plt.setp(_p3_ax[(_r, _c)].get_yticklabels(), visible=False)
+
+    # Hide x tick labels on top row
+    for _c in range(3):
+        plt.setp(_p3_ax[(0, _c)].get_xticklabels(), visible=False)
+
+    fig_title(_p3_fig, 'Best-κ RDF comparison — 1×3 panel', fontweight='bold')
+    _p3_fig.savefig(plot_dir / 'best_kappa_comparison_1x3.png', dpi=150, bbox_inches='tight')
+    plt.close(_p3_fig)
+    print("Saved best_kappa_comparison_1x3.png")
+
 # ── 2c. Explicit-only g(r) — all systems, black, same linestyles ──────────────
 print("\nPlotting explicit-only RDF overlay (black)...")
 _eo_order  = [t for t in ('isotropic', 'dipolar', 'quadrupolar', 'neutral') if t in best_kappas]
@@ -735,7 +873,7 @@ if _eo_order:
             continue
         if _eo_type == 'neutral':
             _neu_r, _neu_g = _eo_r, _eo_g
-        _eo_mask = (_eo_r >= 2 * r_np) & (_eo_r <= 60)
+        _eo_mask = (_eo_r >= 2 * r_np) & (_eo_r <= _plot_rmax)
         _eo_ax.plot(_eo_r[_eo_mask], _eo_g[_eo_mask],
                     color='black', linewidth=1.5, linestyle=_eo_ls,
                     label=_eo_type.capitalize())
@@ -745,38 +883,44 @@ if _eo_order:
                             color='black', alpha=0.12, lw=0)
 
     if _neu_r is not None:
-        _fit_mask = (_neu_r >= 2 * r_np) & (_neu_r <= 60)
+        _fit_mask = (_neu_r >= 2 * r_np) & (_neu_r <= _plot_rmax)
         _fit_r, _fit_g = _neu_r[_fit_mask], _neu_g[_fit_mask]
 
-        if args.peak:
+        if args.fit_mode == 'peak':
             from scipy.optimize import brentq
             _neu_peak = float(_fit_g.max())
             def _py_peak_diff(sigma):
                 phi = 0.3 * (sigma / (2 * r_np)) ** 3
                 return percus_yevick_gr(_fit_r, sigma, phi).max() - _neu_peak
-            _py_sigma = brentq(_py_peak_diff, 2 * r_np, 2 * r_np + 4)
+            _py_sigma = brentq(_py_peak_diff, 2 * r_np, 2 * r_np + args.bead_diameter)
         else:
             from scipy.optimize import minimize_scalar
-            def _py_rmsd(sigma):
-                phi = 0.3 * (sigma / (2 * r_np)) ** 3
-                return np.sqrt(np.mean((percus_yevick_gr(_fit_r, sigma, phi) - _fit_g) ** 2))
-            _py_sigma = minimize_scalar(_py_rmsd, bounds=(2 * r_np, 2 * r_np + 4),
+            if args.fit_mode == 'weighted':
+                def _py_obj(sigma):
+                    phi = 0.3 * (sigma / (2 * r_np)) ** 3
+                    w = _fit_r ** 2
+                    return np.sqrt(np.mean((w * (percus_yevick_gr(_fit_r, sigma, phi) - _fit_g)) ** 2))
+            else:
+                def _py_obj(sigma):
+                    phi = 0.3 * (sigma / (2 * r_np)) ** 3
+                    return np.sqrt(np.mean((percus_yevick_gr(_fit_r, sigma, phi) - _fit_g) ** 2))
+            _py_sigma = minimize_scalar(_py_obj, bounds=(2 * r_np, 2 * r_np + args.bead_diameter),
                                         method='bounded').x
 
         _py_phi = 0.3 * (_py_sigma / (2 * r_np)) ** 3
-        metric  = 'peak' if args.peak else 'RMSD'
+        metric  = args.fit_mode
         print(f"PY fit ({metric}) → σ={_py_sigma:.2f} Å, φ={_py_phi:.3f}")
     else:
         _py_sigma = 2 * r_np + 2.0
         _py_phi   = 0.3 * (_py_sigma / (2 * r_np)) ** 3
 
-    _py_r = np.linspace(_py_sigma, 60, 300)
+    _py_r = np.linspace(_py_sigma, _plot_rmax if np.isfinite(_plot_rmax) else _eo_r[_eo_mask].max(), 300)
     _py_g = percus_yevick_gr(_py_r, _py_sigma, _py_phi)
     _eo_ax.plot(_py_r, _py_g, color='#EF9F27', linewidth=1.5, linestyle='-.',
                 zorder=1, label=f'PY hard sphere')
 
     _eo_ax.axhline(1.0, color='gray', linewidth=0.6, linestyle=':')
-    _eo_ax.set_xlim(2 * r_np - 0.4, 60 + 0.4)
+    _eo_ax.set_xlim(2 * r_np - 0.4, _plot_rmax_lim)
     _eo_ax.xaxis.set_major_locator(plt.MultipleLocator(4))
     _eo_ax.set_xlabel('r [Å]', fontsize=11)
     _eo_ax.set_ylabel('g(r)', fontsize=11)
@@ -1121,7 +1265,7 @@ if len(_overlay_types) >= 2:
 
     _sys_styles = {'isotropic': ':', 'quadrupolar': '-', 'dipolar': '--', 'neutral': '-.'}
 
-    _rdf_xmin, _rdf_xmax, _rdf_pad = 2 * r_np, 60, 0.4
+    _rdf_xmin, _rdf_xmax, _rdf_pad = 2 * r_np, _plot_rmax, 0.4
     for _t in _overlay_types:
         _ls = _sys_styles.get(_t, '-')
         _groups = group_by_kappa(folders_by_type[_t])
@@ -1143,7 +1287,7 @@ if len(_overlay_types) >= 2:
                          label=f'{_t.capitalize()}')
 
     ax_comb.axhline(1.0, color='gray', linewidth=0.6, linestyle='--')
-    ax_comb.set_xlim(_rdf_xmin - _rdf_pad, _rdf_xmax + _rdf_pad)
+    ax_comb.set_xlim(_rdf_xmin - _rdf_pad, _plot_rmax_lim)
     ax_comb.xaxis.set_major_locator(plt.MultipleLocator(4))
     ax_comb.set_ylim(bottom=-rdf_ymax * 0.04, top=rdf_ymax)
     ax_comb.set_xlabel('r [Å]', fontsize=13)
