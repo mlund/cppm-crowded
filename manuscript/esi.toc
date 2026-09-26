@@ -1,0 +1,17 @@
+\contentsline {section}{\numberline {S1}Simulation details}{1}{}%
+\contentsline {subsection}{\numberline {S1.1}Simulation system}{1}{}%
+\contentsline {paragraph}{Explicit-ion simulations.}{2}{}%
+\contentsline {paragraph}{Implicit-ion simulations.}{2}{}%
+\contentsline {paragraph}{Interaction potentials.}{2}{}%
+\contentsline {subsection}{\numberline {S1.2}Simulation protocol}{3}{}%
+\contentsline {subsection}{\numberline {S1.3}Analysis}{3}{}%
+\contentsline {paragraph}{Radial distribution function.}{3}{}%
+\contentsline {paragraph}{Optimal screening-length selection.}{3}{}%
+\contentsline {paragraph}{Multipole energy decomposition.}{4}{}%
+\contentsline {paragraph}{Spatial distribution functions.}{4}{}%
+\contentsline {paragraph}{Osmotic pressure and activity coefficient.}{4}{}%
+\contentsline {section}{\numberline {S2}Orientational correlation analysis}{4}{}%
+\contentsline {section}{\numberline {S3}Multipole energy decomposition from explicit-ion simulations}{6}{}%
+\contentsline {section}{\numberline {S4}Mollweide projections of the ion distribution on the CPPM surface}{7}{}%
+\contentsline {section}{\numberline {S5}Debye length scan}{7}{}%
+\contentsline {section}{\numberline {S6}Energy convergence}{14}{}%

@@ -1,0 +1,783 @@
+#!/bin/bash
+
+# Project information
+#SBATCH -A lu2026-2-71
+
+# Walltime HH:MM:SS
+#SBATCH -t 04:00:00
+
+# Job name and output files
+#SBATCH -J cppm_sweep_imp_isotropic
+#SBATCH -o %x_%j.out
+#SBATCH -e %x_%j.err
+
+# print the sbatch submission file
+cat $0
+
+# Resources request
+#SBATCH -N 1
+#SBATCH --ntasks-per-node=1
+# Note: --cpus-per-task is set dynamically by launch_sweep.sh
+
+##SBATCH -p gpua100
+##SBATCH --mail-user=sebastian.pineda_pineda@chem.lu.se
+##SBATCH --mail-type=END
+
+#######################################
+# Log job resources and configuration
+#######################################
+
+echo "========================================"
+echo "SLURM Job Information"
+echo "========================================"
+echo "Job ID:            $SLURM_JOB_ID"
+echo "Job Name:          $SLURM_JOB_NAME"
+echo "Job Submit Time:   $(date)"
+echo "User:              $USER"
+echo "Working Directory: $(pwd)"
+echo ""
+echo "========================================"
+echo "CPU Configuration"
+echo "========================================"
+echo "Number of Nodes:   $SLURM_NNODES"
+echo "Tasks per Node:    $SLURM_NTASKS_PER_NODE"
+echo "Total Tasks:       $SLURM_NTASKS"
+echo "CPUs per Task:     $SLURM_CPUS_PER_TASK"
+echo "Walltime Limit:    $SLURM_TIMELIMIT"
+echo ""
+echo "========================================"
+echo "Node Information"
+echo "========================================"
+echo "Allocated Nodes:   $SLURM_NODELIST"
+echo ""
+echo "========================================"
+echo "Memory Configuration"
+echo "========================================"
+echo "Memory per Node:   $SLURM_MEM_PER_NODE MB"
+echo ""
+echo "========================================"
+echo "System Hardware Info"
+echo "========================================"
+lscpu | head -20
+echo ""
+
+module purge
+module add GCCcore/12.3.0
+module add Python/3.11.3
+
+time "$SLURM_SUBMIT_DIR/run_sweep.sh" "$@"
+
+#######################################
+# Log final job statistics
+#######################################
+
+echo ""
+echo "========================================"
+echo "Job Completion Information"
+echo "========================================"
+echo "Job End Time: $(date)"
+echo "Exit Status:  $?"
+echo ""
+echo "Run: seff $SLURM_JOB_ID   for CPU efficiency and memory stats."
+echo "========================================"
+
+mv *.err *.out "$SLURM_SUBMIT_DIR/" 2>/dev/null || true
+========================================
+SLURM Job Information
+========================================
+Job ID:            3593451
+Job Name:          cppm_sweep_imp_isotropic
+Job Submit Time:   Fri Sep 11 11:15:51 AM CEST 2026
+User:              pinedaps
+Working Directory: /home/pinedaps/cppm-crowded
+
+========================================
+CPU Configuration
+========================================
+Number of Nodes:   1
+Tasks per Node:    
+Total Tasks:       
+CPUs per Task:     48
+Walltime Limit:    
+
+========================================
+Node Information
+========================================
+Allocated Nodes:   cn036
+
+========================================
+Memory Configuration
+========================================
+Memory per Node:    MB
+
+========================================
+System Hardware Info
+========================================
+Architecture:                            x86_64
+CPU op-mode(s):                          32-bit, 64-bit
+Address sizes:                           48 bits physical, 48 bits virtual
+Byte Order:                              Little Endian
+CPU(s):                                  48
+On-line CPU(s) list:                     0-47
+Vendor ID:                               AuthenticAMD
+Model name:                              AMD EPYC 7413 24-Core Processor
+CPU family:                              25
+Model:                                   1
+Thread(s) per core:                      1
+Core(s) per socket:                      24
+Socket(s):                               2
+Stepping:                                1
+Frequency boost:                         enabled
+CPU(s) scaling MHz:                      79%
+CPU max MHz:                             3632.1799
+CPU min MHz:                             1500.0000
+BogoMIPS:                                5290.02
+Flags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 invpcid cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local user_shstk clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin brs arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold v_vmsave_vmload vgif v_spec_ctrl umip pku ospke vaes vpclmulqdq rdpid overflow_recov succor smca debug_swap
+
+Script started at: Fri Sep 11 11:15:52 AM CEST 2026
+Systems  : isotropic
+Kappas   : 0.04 0.0442667 0.0485333 0.0528 0.0570667 0.0613333 0.0656 0.0698667 0.0741333 0.0784 0.0826667 0.0869333 0.0912 0.0954667 0.0997333 0.104
+Replicas : 3
+Total    : 48 simulation(s)
+
+  [isotropic κ=0.0400] Generating input files
+  [isotropic κ=0.0443_3] Generating input files
+  [isotropic κ=0.0443] Generating input files
+  [isotropic κ=0.0400_2] Generating input files
+  [isotropic κ=0.0400_3] Generating input files
+  [isotropic κ=0.0443_2] Generating input files
+  [isotropic κ=0.0485_3] Generating input files
+  [isotropic κ=0.0485] Generating input files
+  [isotropic κ=0.0485_2] Generating input files
+  [isotropic κ=0.0528] Generating input files
+  [isotropic κ=0.0571] Generating input files
+  [isotropic κ=0.0528_2] Generating input files
+  [isotropic κ=0.0528_3] Generating input files
+  [isotropic κ=0.0571_3] Generating input files
+  [isotropic κ=0.0571_2] Generating input files
+  [isotropic κ=0.0613] Generating input files
+  [isotropic κ=0.0613_2] Generating input files
+  [isotropic κ=0.0656] Generating input files
+  [isotropic κ=0.0613_3] Generating input files
+  [isotropic κ=0.0656_2] Generating input files
+  [isotropic κ=0.0656_3] Generating input files
+  [isotropic κ=0.0699] Generating input files
+  [isotropic κ=0.0699_2] Generating input files
+  [isotropic κ=0.0699_3] Generating input files
+  [isotropic κ=0.0741_2] Generating input files
+  [isotropic κ=0.0741] Generating input files
+  [isotropic κ=0.0741_3] Generating input files
+  [isotropic κ=0.0784] Generating input files
+  [isotropic κ=0.0784_2] Generating input files
+  [isotropic κ=0.0784_3] Generating input files
+  [isotropic κ=0.0827] Generating input files
+  [isotropic κ=0.0827_2] Generating input files
+  [isotropic κ=0.0827_3] Generating input files
+  [isotropic κ=0.0869] Generating input files
+  [isotropic κ=0.0869_2] Generating input files
+  [isotropic κ=0.0869_3] Generating input files
+  [isotropic κ=0.0912] Generating input files
+  [isotropic κ=0.0912_2] Generating input files
+  [isotropic κ=0.0912_3] Generating input files
+  [isotropic κ=0.0955] Generating input files
+  [isotropic κ=0.0955_2] Generating input files
+  [isotropic κ=0.0955_3] Generating input files
+  [isotropic κ=0.0997] Generating input files
+  [isotropic κ=0.0997_2] Generating input files
+Waiting for 48 parallel simulation(s) to finish...
+  [isotropic κ=0.0997_3] Generating input files
+  [isotropic κ=0.1040] Generating input files
+  [isotropic κ=0.1040_2] Generating input files
+  [isotropic κ=0.1040_3] Generating input files
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0869/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0869/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0869 Å⁻¹, λD = 11.5031 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.1040_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.1040_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.1040 Å⁻¹, λD = 9.6154 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.1040/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.1040/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.1040 Å⁻¹, λD = 9.6154 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0485/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0485/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0485 Å⁻¹, λD = 20.6044 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0869_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0869_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0869 Å⁻¹, λD = 11.5031 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+  [isotropic κ=0.0869] Equilibration
+  [isotropic κ=0.1040] Equilibration
+  [isotropic κ=0.1040_2] Equilibration
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0912/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0912/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0912 Å⁻¹, λD = 10.9649 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0400_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0400_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0400 Å⁻¹, λD = 25.0000 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0485_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0485_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0485 Å⁻¹, λD = 20.6044 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0827_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0827_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0827 Å⁻¹, λD = 12.0968 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+  [isotropic κ=0.0869_3] Equilibration
+  [isotropic κ=0.0485] Equilibration
+  [isotropic κ=0.0485_3] Equilibration
+  [isotropic κ=0.0400_3] Equilibration
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0528_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0528_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0528 Å⁻¹, λD = 18.9394 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+  [isotropic κ=0.0827_2] Equilibration
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0613/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0613/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0613 Å⁻¹, λD = 16.3044 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+  [isotropic κ=0.0912] Equilibration
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0784_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0784_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0784 Å⁻¹, λD = 12.7551 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0656_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0656_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0656 Å⁻¹, λD = 15.2439 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0656_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0656_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0656 Å⁻¹, λD = 15.2439 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0741_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0741_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0741 Å⁻¹, λD = 13.4892 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0400/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0400/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0400 Å⁻¹, λD = 25.0000 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0656/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0656/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0656 Å⁻¹, λD = 15.2439 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+  [isotropic κ=0.0528_3] Equilibration
+  [isotropic κ=0.0613] Equilibration
+  [isotropic κ=0.0656_2] Equilibration
+  [isotropic κ=0.0400] Equilibration
+  [isotropic κ=0.0656_3] Equilibration
+  [isotropic κ=0.0741_3] Equilibration
+  [isotropic κ=0.0784_3] Equilibration
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0997_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0997_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0997 Å⁻¹, λD = 10.0267 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0741/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0741/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0741 Å⁻¹, λD = 13.4892 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0784/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0784/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0784 Å⁻¹, λD = 12.7551 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.1040_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.1040_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.1040 Å⁻¹, λD = 9.6154 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0528/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0528/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0528 Å⁻¹, λD = 18.9394 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0997/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0997/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0997 Å⁻¹, λD = 10.0267 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0955/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0955/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0955 Å⁻¹, λD = 10.4749 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0997_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0997_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0997 Å⁻¹, λD = 10.0267 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+  [isotropic κ=0.0741] Equilibration
+  [isotropic κ=0.0997_3] Equilibration
+  [isotropic κ=0.1040_3] Equilibration
+  [isotropic κ=0.0784] Equilibration
+  [isotropic κ=0.0528] Equilibration
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0613_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0613_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0613 Å⁻¹, λD = 16.3044 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+  [isotropic κ=0.0656] Equilibration
+  [isotropic κ=0.0997] Equilibration
+  [isotropic κ=0.0997_2] Equilibration
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0699_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0699_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0699 Å⁻¹, λD = 14.3130 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+  [isotropic κ=0.0955] Equilibration
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0869_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0869_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0869 Å⁻¹, λD = 11.5031 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0955_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0955_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0955 Å⁻¹, λD = 10.4749 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0571/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0571/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0571 Å⁻¹, λD = 17.5234 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0443_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0443_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0443 Å⁻¹, λD = 22.5903 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0827/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0827/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0827 Å⁻¹, λD = 12.0968 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0699/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0699/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0699 Å⁻¹, λD = 14.3130 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0443_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0443_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0443 Å⁻¹, λD = 22.5903 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0955_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0955_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0955 Å⁻¹, λD = 10.4749 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0741_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0741_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0741 Å⁻¹, λD = 13.4892 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0571_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0571_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0571 Å⁻¹, λD = 17.5234 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0528_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0528_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0528 Å⁻¹, λD = 18.9394 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0912_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0912_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0912 Å⁻¹, λD = 10.9649 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0485_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0485_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0485 Å⁻¹, λD = 20.6044 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0827_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0827_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0827 Å⁻¹, λD = 12.0968 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0699_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0699_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0699 Å⁻¹, λD = 14.3130 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0571_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0571_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0571 Å⁻¹, λD = 17.5234 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0613_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0613_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0613 Å⁻¹, λD = 16.3044 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+  [isotropic κ=0.0613_2] Equilibration
+  [isotropic κ=0.0955_3] Equilibration
+  [isotropic κ=0.0699] Equilibration
+  [isotropic κ=0.0955_2] Equilibration
+  [isotropic κ=0.0869_2] Equilibration
+  [isotropic κ=0.0571] Equilibration
+  [isotropic κ=0.0827] Equilibration
+  [isotropic κ=0.0443_2] Equilibration
+  [isotropic κ=0.0443_3] Equilibration
+  [isotropic κ=0.0741_2] Equilibration
+  [isotropic κ=0.0699_3] Equilibration
+  [isotropic κ=0.0528_2] Equilibration
+  [isotropic κ=0.0485_2] Equilibration
+  [isotropic κ=0.0571_3] Equilibration
+  [isotropic κ=0.0912_2] Equilibration
+  [isotropic κ=0.0699_2] Equilibration
+  [isotropic κ=0.0571_2] Equilibration
+  [isotropic κ=0.0827_3] Equilibration
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0784_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0784_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0784 Å⁻¹, λD = 12.7551 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+  [isotropic κ=0.0613_3] Equilibration
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0443/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0443/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0443 Å⁻¹, λD = 22.5903 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0400_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0400_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0400 Å⁻¹, λD = 25.0000 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+  [isotropic κ=0.0784_2] Equilibration
+  [isotropic κ=0.0443] Equilibration
+  [isotropic κ=0.0400_2] Equilibration
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0912_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0912_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0912 Å⁻¹, λD = 10.9649 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+  [isotropic κ=0.0912_3] Equilibration
+  [isotropic κ=0.0869_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0955] Production (resuming from state.yaml)
+  [isotropic κ=0.0699_3] Production (resuming from state.yaml)
+  [isotropic κ=0.0400_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0443] Production (resuming from state.yaml)
+  [isotropic κ=0.0741] Production (resuming from state.yaml)
+  [isotropic κ=0.0613] Production (resuming from state.yaml)
+  [isotropic κ=0.0485] Production (resuming from state.yaml)
+  [isotropic κ=0.0827] Production (resuming from state.yaml)
+  [isotropic κ=0.0869] Production (resuming from state.yaml)
+  [isotropic κ=0.0912_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0656] Production (resuming from state.yaml)
+  [isotropic κ=0.0485_3] Production (resuming from state.yaml)
+  [isotropic κ=0.0400] Production (resuming from state.yaml)
+  [isotropic κ=0.1040_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0613_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0784_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0699_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0827_3] Production (resuming from state.yaml)
+  [isotropic κ=0.0571] Production (resuming from state.yaml)
+  [isotropic κ=0.0784_3] Production (resuming from state.yaml)
+  [isotropic κ=0.0485_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0528_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0912_3] Production (resuming from state.yaml)
+  [isotropic κ=0.0571_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0528_3] Production (resuming from state.yaml)
+  [isotropic κ=0.0912] Production (resuming from state.yaml)
+  [isotropic κ=0.0699] Production (resuming from state.yaml)
+  [isotropic κ=0.0656_2] Production (resuming from state.yaml)
+  [isotropic κ=0.1040] Production (resuming from state.yaml)
+  [isotropic κ=0.0571_3] Production (resuming from state.yaml)
+  [isotropic κ=0.0443_3] Production (resuming from state.yaml)
+  [isotropic κ=0.1040_3] Production (resuming from state.yaml)
+  [isotropic κ=0.0784] Production (resuming from state.yaml)
+  [isotropic κ=0.0741_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0613_3] Production (resuming from state.yaml)
+  [isotropic κ=0.0955_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0997] Production (resuming from state.yaml)
+  [isotropic κ=0.0528] Production (resuming from state.yaml)
+  [isotropic κ=0.0741_3] Production (resuming from state.yaml)
+  [isotropic κ=0.0869_3] Production (resuming from state.yaml)
+  [isotropic κ=0.0997_3] Production (resuming from state.yaml)
+  [isotropic κ=0.0955_3] Production (resuming from state.yaml)
+  [isotropic κ=0.0656_3] Production (resuming from state.yaml)
+  [isotropic κ=0.0400_3] Production (resuming from state.yaml)
+  [isotropic κ=0.0997_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0443_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0827_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0784_2] Done
+  [isotropic κ=0.0571_2] Done
+  [isotropic κ=0.0955] Done
+  [isotropic κ=0.0955_2] Done
+  [isotropic κ=0.0656_2] Done
+  [isotropic κ=0.0613_2] Done
+  [isotropic κ=0.0827] Done
+  [isotropic κ=0.0443] Done
+  [isotropic κ=0.0528_2] Done
+  [isotropic κ=0.0827_3] Done
+  [isotropic κ=0.0699_2] Done
+  [isotropic κ=0.0485_2] Done
+  [isotropic κ=0.0571_3] Done
+  [isotropic κ=0.0699] Done
+  [isotropic κ=0.0741] Done
+  [isotropic κ=0.0400_2] Done
+  [isotropic κ=0.0784_3] Done
+  [isotropic κ=0.0571] Done
+  [isotropic κ=0.0741_2] Done
+  [isotropic κ=0.0912_3] Done
+  [isotropic κ=0.0485] Done
+  [isotropic κ=0.0699_3] Done
+  [isotropic κ=0.0869] Done
+  [isotropic κ=0.0784] Done
+  [isotropic κ=0.0656] Done
+  [isotropic κ=0.0400] Done
+  [isotropic κ=0.0869_2] Done
+  [isotropic κ=0.0741_3] Done
+  [isotropic κ=0.0485_3] Done
+  [isotropic κ=0.1040_2] Done
+  [isotropic κ=0.1040_3] Done
+  [isotropic κ=0.0613_3] Done
+  [isotropic κ=0.0528_3] Done
+  [isotropic κ=0.0528] Done
+  [isotropic κ=0.0656_3] Done
+  [isotropic κ=0.1040] Done
+  [isotropic κ=0.0443_3] Done
+  [isotropic κ=0.0869_3] Done
+  [isotropic κ=0.0955_3] Done
+  [isotropic κ=0.0443_2] Done
+  [isotropic κ=0.0827_2] Done
+  [isotropic κ=0.0997] Done
+  [isotropic κ=0.0912] Done
+  [isotropic κ=0.0997_3] Done
+  [isotropic κ=0.0400_3] Done
+  [isotropic κ=0.0912_2] Done
+  [isotropic κ=0.0997_2] Done
+  [isotropic κ=0.0613] Done
+========================================
+Execution Time Summary
+========================================
+Script started : Fri Sep 11 11:15:52 AM CEST 2026
+Script ended   : Fri Sep 11 02:27:41 PM CEST 2026
+Total elapsed  : 3h 11m 49s (11509 seconds)
+========================================
+
+========================================
+Job Completion Information
+========================================
+Job End Time: Fri Sep 11 02:27:41 PM CEST 2026
+Exit Status:  0
+
+Run: seff 3593451   for CPU efficiency and memory stats.
+========================================

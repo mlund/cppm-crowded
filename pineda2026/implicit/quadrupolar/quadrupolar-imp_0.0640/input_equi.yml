@@ -1,0 +1,51 @@
+# Crowded macroion suspension at fixed volume fraction with explicit 1:1
+# salt and grand-canonical Na+/Cl- pair insertion.
+# Important: when running for the first time, use a large displacement parameter for
+#            the macroions so that they can escape interlocked configs. That's also the
+#            why we start with almost no microions (leave space) and pull in via GCMC.
+
+
+atoms:
+  - {name: MP, mass: 1.0e7,  charge:  0.0, sigma: 40.0, epsilon: 2.479}  # macroion mid-particle
+  - {name: NP, mass: 1.0e-3, charge: -1.0, sigma:  4.0, epsilon: 2.479}  # negative particle
+  - {name: PP, mass: 1.0e-3, charge:  1.0, sigma:  4.0, epsilon: 2.479}  # positive particle
+  - {name: UP, mass: 1.0e-3, charge:  0.0, sigma:  4.0, epsilon: 2.479}  # uncharged particle
+
+molecules:
+  - name: macroion
+    degrees_of_freedom: Rigid
+    has_com: true
+    from_structure: "../P28.xyz"
+
+system:
+  cell: !Cuboid [149.64407707272974, 149.64407707272974, 149.64407707272974]
+  medium:
+    permittivity: !Water
+    temperature: 298.15
+
+  blocks:
+    - molecule: macroion
+      N: 30
+      insert: !GridCOM {rotate: true}
+
+  energy:
+    - !Nonbonded
+      default:
+        - !Fanourgakis {cutoff: 74.82203853636487, debye_length: 15.625}
+        - !WeeksChandlerAndersen {mixing: LB}
+
+analysis:
+  - !Energy
+    file: energy.csv.gz
+    frequency: !Every 10
+
+propagate:
+  seed: !Hardware
+  criterion: Metropolis
+  steps: 20000
+  collections:
+    - !Stochastic
+      moves:
+        - !TranslateMolecule {molecule: macroion, dp: 4.0, repeat: 30}
+        - !RotateMolecule    {molecule: macroion, dprot: 0.4,  repeat: 30}
+

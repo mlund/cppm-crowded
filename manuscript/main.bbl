@@ -1,0 +1,76 @@
+\begin{thebibliography}{10}
+
+\bibitem{wennerstrom_colloidal_2020}
+Håkan Wennerström, Eloy Vallina~Estrada, Jens Danielsson, and Mikael
+  Oliveberg.
+\newblock Colloidal stability of the living cell.
+\newblock {\em Proceedings of the National Academy of Sciences},
+  117(19):10113--10121, May 2020.
+
+\bibitem{bozic2017a}
+Anže Lošdorfer~Božič and Rudolf Podgornik.
+\newblock {pH} {Dependence} of {Charge} {Multipole} {Moments} in {Proteins}.
+\newblock {\em Biophysical Journal}, 113(7):1454--1465, 2017.
+
+\bibitem{ausserwoger2023}
+Hannes Ausserwöger, Georg Krainer, Timothy~J. Welsh, Nels Thorsteinson, Ella
+  De~Csilléry, Tomas Sneideris, Matthias~M. Schneider, Thomas Egebjerg,
+  Gaetano Invernizzi, Therese~W. Herling, Nikolai Lorenzen, and Tuomas P.~J.
+  Knowles.
+\newblock Surface patches induce nonspecific binding and phase separation of
+  antibodies.
+\newblock {\em Proceedings of the National Academy of Sciences},
+  120(15):e2210332120, April 2023.
+
+\bibitem{yigit2015a}
+Cemil Yigit, Jan Heyda, and Joachim Dzubiella.
+\newblock Charged patchy particle models in explicit salt: Ion distributions,
+  electrostatic potentials, and effective interactions.
+\newblock {\em The Journal of chemical physics}, 143(6):08B606\_1, 2015.
+
+\bibitem{yigit2017a}
+Cemil Yigit, Matej Kanduč, Matthias Ballauff, and Joachim Dzubiella.
+\newblock Interaction of charged patchy protein models with like-charged
+  polyelectrolyte brushes.
+\newblock {\em Langmuir}, 33(1):417--427, 2017.
+
+\bibitem{podgornik2018a}
+Rudolf Podgornik.
+\newblock General theory of charge regulation and surface differential
+  capacitance.
+\newblock {\em The Journal of Chemical Physics}, 149(10):104701, 2018.
+\newblock tex.ids= podgornik2018a.
+
+\bibitem{bianchi2025}
+Emanuela Bianchi et~al.
+\newblock Patchy particles: state of the art and perspectives.
+\newblock {\em Nature Communications}, 16, 2025.
+\newblock Article number: 3859.
+
+\bibitem{stenqvist2013}
+Björn Stenqvist, Axel Thuresson, Anıl Kurut, Robert Vácha, and Mikael Lund.
+\newblock Faunus – a flexible framework for monte carlo simulation.
+\newblock {\em Molecular Simulation}, 39(14-15):1233--1239, 2013.
+
+\bibitem{israelachvili2011}
+Jacob~N. Israelachvili.
+\newblock {\em Intermolecular and Surface Forces}.
+\newblock Academic Press, London, 3 edition, 2011.
+
+\bibitem{fanourgakis2009}
+George~S. Fanourgakis, Thomas~E. Markland, and David~E. Manolopoulos.
+\newblock A fast path integral method for polarizable force fields.
+\newblock {\em The Journal of Chemical Physics}, 131(9):094102, 09 2009.
+
+\bibitem{Wertheim1963}
+M.~S. Wertheim.
+\newblock Exact solution of the {Percus-Yevick} integral equation for hard
+  spheres.
+\newblock {\em Physical Review Letters}, 10(8):321--323, 1963.
+
+\bibitem{Thiele1963}
+Everett Thiele.
+\newblock Equation of state for hard spheres.
+\newblock {\em The Journal of Chemical Physics}, 39(2):474--479, 1963.
+
+\end{thebibliography}

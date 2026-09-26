@@ -1,0 +1,276 @@
+#!/bin/bash
+
+# Project information
+#SBATCH -A lu2026-2-71
+
+# Walltime HH:MM:SS
+#SBATCH -t 06:00:00
+
+# Job name and output files
+#SBATCH -J cppm_sweep_imp_isotropic
+#SBATCH -o %x_%j.out
+#SBATCH -e %x_%j.err
+
+# print the sbatch submission file
+cat $0
+
+# Resources request
+#SBATCH -N 1
+#SBATCH --ntasks-per-node=1
+# Note: --cpus-per-task is set dynamically by launch_sweep.sh
+
+##SBATCH -p gpua100
+##SBATCH --mail-user=sebastian.pineda_pineda@chem.lu.se
+##SBATCH --mail-type=END
+
+#######################################
+# Log job resources and configuration
+#######################################
+
+echo "========================================"
+echo "SLURM Job Information"
+echo "========================================"
+echo "Job ID:            $SLURM_JOB_ID"
+echo "Job Name:          $SLURM_JOB_NAME"
+echo "Job Submit Time:   $(date)"
+echo "User:              $USER"
+echo "Working Directory: $(pwd)"
+echo ""
+echo "========================================"
+echo "CPU Configuration"
+echo "========================================"
+echo "Number of Nodes:   $SLURM_NNODES"
+echo "Tasks per Node:    $SLURM_NTASKS_PER_NODE"
+echo "Total Tasks:       $SLURM_NTASKS"
+echo "CPUs per Task:     $SLURM_CPUS_PER_TASK"
+echo "Walltime Limit:    $SLURM_TIMELIMIT"
+echo ""
+echo "========================================"
+echo "Node Information"
+echo "========================================"
+echo "Allocated Nodes:   $SLURM_NODELIST"
+echo ""
+echo "========================================"
+echo "Memory Configuration"
+echo "========================================"
+echo "Memory per Node:   $SLURM_MEM_PER_NODE MB"
+echo ""
+echo "========================================"
+echo "System Hardware Info"
+echo "========================================"
+lscpu | head -20
+echo ""
+
+module purge
+module add GCCcore/12.3.0
+module add Python/3.11.3
+
+time "$SLURM_SUBMIT_DIR/run_sweep.sh" "$@"
+
+#######################################
+# Log final job statistics
+#######################################
+
+echo ""
+echo "========================================"
+echo "Job Completion Information"
+echo "========================================"
+echo "Job End Time: $(date)"
+echo "Exit Status:  $?"
+echo ""
+echo "Run: seff $SLURM_JOB_ID   for CPU efficiency and memory stats."
+echo "========================================"
+
+mv *.err *.out "$SLURM_SUBMIT_DIR/" 2>/dev/null || true
+========================================
+SLURM Job Information
+========================================
+Job ID:            3490839
+Job Name:          cppm_sweep_imp_isotropic
+Job Submit Time:   Thu Aug 13 02:04:09 PM CEST 2026
+User:              pinedaps
+Working Directory: /home/pinedaps/cppm-crowded
+
+========================================
+CPU Configuration
+========================================
+Number of Nodes:   1
+Tasks per Node:    
+Total Tasks:       
+CPUs per Task:     9
+Walltime Limit:    
+
+========================================
+Node Information
+========================================
+Allocated Nodes:   cn076
+
+========================================
+Memory Configuration
+========================================
+Memory per Node:    MB
+
+========================================
+System Hardware Info
+========================================
+Architecture:                            x86_64
+CPU op-mode(s):                          32-bit, 64-bit
+Address sizes:                           48 bits physical, 48 bits virtual
+Byte Order:                              Little Endian
+CPU(s):                                  48
+On-line CPU(s) list:                     0-47
+Vendor ID:                               AuthenticAMD
+Model name:                              AMD EPYC 7413 24-Core Processor
+CPU family:                              25
+Model:                                   1
+Thread(s) per core:                      1
+Core(s) per socket:                      24
+Socket(s):                               2
+Stepping:                                1
+Frequency boost:                         enabled
+CPU(s) scaling MHz:                      98%
+CPU max MHz:                             3632.1799
+CPU min MHz:                             1500.0000
+BogoMIPS:                                5289.62
+Flags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 invpcid cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local user_shstk clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin brs arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold v_vmsave_vmload vgif v_spec_ctrl umip pku ospke vaes vpclmulqdq rdpid overflow_recov succor smca debug_swap
+
+Script started at: Thu Aug 13 02:04:10 PM CEST 2026
+Systems  : isotropic
+Kappas   : 0.001 0.010 0.100
+Replicas : 3
+Total    : 9 simulation(s)
+
+  [isotropic κ=0.0010_2] Generating input files
+  [isotropic κ=0.0100] Generating input files
+  [isotropic κ=0.0100_2] Generating input files
+  [isotropic κ=0.0010] Generating input files
+Waiting for 9 parallel simulation(s) to finish...
+  [isotropic κ=0.0010_3] Generating input files
+  [isotropic κ=0.0100_3] Generating input files
+  [isotropic κ=0.1000_3] Generating input files
+  [isotropic κ=0.1000] Generating input files
+  [isotropic κ=0.1000_2] Generating input files
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.1000_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.1000_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.1000 Å⁻¹, λD = 10.0000 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.1000/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.1000/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.1000 Å⁻¹, λD = 10.0000 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0100_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0100_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0100 Å⁻¹, λD = 100.0000 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0010_3/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0010_3/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0010 Å⁻¹, λD = 1000.0000 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0100_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0100_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0100 Å⁻¹, λD = 100.0000 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.1000_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.1000_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.1000 Å⁻¹, λD = 10.0000 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0010_2/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0010_2/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0010 Å⁻¹, λD = 1000.0000 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0010/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0010/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0010 Å⁻¹, λD = 1000.0000 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0100/input_equi.yml (20000 repeats, equilibration only)
+Written: /home/pinedaps/cppm-crowded/isotropic-imp_0.0100/input.yml (40000 repeats)
+  system_type    : isotropic
+  n_macroions    : 30
+  volume_fraction: 0.3
+  box_length     : 149.6441 Å
+  ions           : implicit (Yukawa, κ = 0.0100 Å⁻¹, λD = 100.0000 Å)
+  potential      : fanourgakis
+  cutoff         : 74.8220 Å
+  [isotropic κ=0.1000_3] Equilibration
+  [isotropic κ=0.1000] Equilibration
+  [isotropic κ=0.0100_2] Equilibration
+  [isotropic κ=0.0010] Equilibration
+  [isotropic κ=0.0100_3] Equilibration
+  [isotropic κ=0.0010_3] Equilibration
+  [isotropic κ=0.0010_2] Equilibration
+  [isotropic κ=0.0100] Equilibration
+  [isotropic κ=0.1000_2] Equilibration
+  [isotropic κ=0.1000] Production (resuming from state.yaml)
+  [isotropic κ=0.0010_3] Production (resuming from state.yaml)
+  [isotropic κ=0.0100] Production (resuming from state.yaml)
+  [isotropic κ=0.1000_3] Production (resuming from state.yaml)
+  [isotropic κ=0.1000_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0100_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0100_3] Production (resuming from state.yaml)
+  [isotropic κ=0.0010_2] Production (resuming from state.yaml)
+  [isotropic κ=0.0010] Production (resuming from state.yaml)
+  [isotropic κ=0.0010_3] Done
+  [isotropic κ=0.0100] Done
+  [isotropic κ=0.0010_2] Done
+  [isotropic κ=0.1000_3] Done
+  [isotropic κ=0.0010] Done
+  [isotropic κ=0.1000_2] Done
+  [isotropic κ=0.1000] Done
+  [isotropic κ=0.0100_3] Done
+  [isotropic κ=0.0100_2] Done
+========================================
+Execution Time Summary
+========================================
+Script started : Thu Aug 13 02:04:10 PM CEST 2026
+Script ended   : Thu Aug 13 05:05:18 PM CEST 2026
+Total elapsed  : 3h 1m 8s (10868 seconds)
+========================================
+
+========================================
+Job Completion Information
+========================================
+Job End Time: Thu Aug 13 05:05:18 PM CEST 2026
+Exit Status:  0
+
+Run: seff 3490839   for CPU efficiency and memory stats.
+========================================

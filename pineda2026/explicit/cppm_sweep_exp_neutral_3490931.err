@@ -1,0 +1,83 @@
+The following modules were not unloaded:
+  (Use "module --force purge" to unload all):
+
+  1) SoftwareTree/Milan
+ INFO  faunus::cli > faunus 3.0.0-beta.2 (git v3.0.0-beta.2-54-g693f425)
+ INFO  faunus::cli > faunus 3.0.0-beta.2 (git v3.0.0-beta.2-54-g693f425)
+ INFO  faunus::cli > faunus 3.0.0-beta.2 (git v3.0.0-beta.2-54-g693f425)
+ WARN  faunus::montecarlo::speciation > SpeciationMove: `temperature` is deprecated; the system temperature is used.
+ INFO  faunus::montecarlo::speciation > SpeciationMove: 1 reactions, kT = 2.4790 kJ/mol
+ WARN  faunus::montecarlo::speciation > SpeciationMove: `temperature` is deprecated; the system temperature is used.
+ INFO  faunus::montecarlo::speciation > SpeciationMove: 1 reactions, kT = 2.4790 kJ/mol
+ INFO  faunus::simulation             > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ WARN  faunus::montecarlo::speciation > SpeciationMove: `temperature` is deprecated; the system temperature is used.
+ INFO  faunus::simulation             > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::montecarlo::speciation > SpeciationMove: 1 reactions, kT = 2.4790 kJ/mol
+ INFO  faunus::simulation             > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ INFO  faunus::simulation             > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::simulation             > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ INFO  faunus::simulation             > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::simulation             > Initial energy = 1960510003652514.75 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::simulation             > Initial energy = 33821217683917.88 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::simulation             > Initial energy = 149101477531801.25 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::simulation             > Final energy = -75.16 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ WARN  faunus::simulation             > Energy drift: 9.11e-1 kJ/mol (relative: 1.21e-2) ⚠️
+ INFO  faunus::simulation             > Saved simulation state to state.yaml
+ INFO  faunus::cli > faunus 3.0.0-beta.2 (git v3.0.0-beta.2-54-g693f425)
+ WARN  faunus::montecarlo::speciation > SpeciationMove: `temperature` is deprecated; the system temperature is used.
+ INFO  faunus::montecarlo::speciation > SpeciationMove: 1 reactions, kT = 2.4790 kJ/mol
+ INFO  faunus::analysis::multipole    > Multipole: selection 'molecule macroion' matched 30 groups
+ INFO  faunus::state                  > Restored simulation state
+ INFO  faunus::simulation             > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ INFO  faunus::simulation             > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::simulation             > Initial energy = -75.16 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::simulation             > Final energy = -55.39 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ WARN  faunus::simulation             > Energy drift: 1.60e-2 kJ/mol (relative: 2.89e-4) ⚠️
+ INFO  faunus::simulation             > Saved simulation state to state.yaml
+ INFO  faunus::cli > faunus 3.0.0-beta.2 (git v3.0.0-beta.2-54-g693f425)
+ WARN  faunus::montecarlo::speciation > SpeciationMove: `temperature` is deprecated; the system temperature is used.
+ INFO  faunus::montecarlo::speciation > SpeciationMove: 1 reactions, kT = 2.4790 kJ/mol
+ INFO  faunus::analysis::multipole    > Multipole: selection 'molecule macroion' matched 30 groups
+ INFO  faunus::state                  > Restored simulation state
+ INFO  faunus::simulation             > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ INFO  faunus::simulation             > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::simulation             > Initial energy = -55.39 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::simulation             > Final energy = -77.06 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ WARN  faunus::simulation             > Energy drift: 1.51e1 kJ/mol (relative: 1.95e-1) ⚠️
+ INFO  faunus::simulation             > Saved simulation state to state.yaml
+ INFO  faunus::cli > faunus 3.0.0-beta.2 (git v3.0.0-beta.2-54-g693f425)
+ WARN  faunus::montecarlo::speciation > SpeciationMove: `temperature` is deprecated; the system temperature is used.
+ INFO  faunus::montecarlo::speciation > SpeciationMove: 1 reactions, kT = 2.4790 kJ/mol
+ INFO  faunus::analysis::multipole    > Multipole: selection 'molecule macroion' matched 30 groups
+ INFO  faunus::state                  > Restored simulation state
+ INFO  faunus::simulation             > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ INFO  faunus::simulation             > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::simulation             > Initial energy = -77.06 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::analysis::structure_writer > VMD visualization (with per-frame group visibility): vmd -e confout.tcl
+ INFO  faunus::simulation                 > Final energy = -55.89 kJ/mol
+ INFO  faunus::simulation                 > Net charge = 0.0000e0 e
+ INFO  faunus::simulation                 > Energy drift: 6.21e-11 kJ/mol (relative: 1.11e-12) ✅
+ INFO  faunus::simulation                 > Saved simulation state to state.yaml
+ INFO  faunus::analysis::structure_writer > VMD visualization (with per-frame group visibility): vmd -e confout.tcl
+ INFO  faunus::simulation                 > Final energy = -79.20 kJ/mol
+ INFO  faunus::simulation                 > Net charge = 0.0000e0 e
+ INFO  faunus::simulation                 > Energy drift: 3.75e-12 kJ/mol (relative: 4.74e-14) ✅
+ INFO  faunus::simulation                 > Saved simulation state to state.yaml
+ INFO  faunus::analysis::structure_writer > VMD visualization (with per-frame group visibility): vmd -e confout.tcl
+ INFO  faunus::simulation                 > Final energy = -84.08 kJ/mol
+ INFO  faunus::simulation                 > Net charge = 0.0000e0 e
+ INFO  faunus::simulation                 > Energy drift: 1.61e-10 kJ/mol (relative: 1.91e-12) ✅
+ INFO  faunus::simulation                 > Saved simulation state to state.yaml
+
+real	1507m9.636s
+user	4483m41.727s
+sys	0m13.877s

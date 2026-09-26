@@ -1,0 +1,71 @@
+The following modules were not unloaded:
+  (Use "module --force purge" to unload all):
+
+  1) SoftwareTree/Milan
+ INFO  faunus::cli > faunus 3.0.0-beta.3 (git v3.0.0-beta.3-1-gb30ff93)
+ INFO  faunus::cli > faunus 3.0.0-beta.3 (git v3.0.0-beta.3-1-gb30ff93)
+ INFO  faunus::cli > faunus 3.0.0-beta.3 (git v3.0.0-beta.3-1-gb30ff93)
+ INFO  faunus::simulation > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ INFO  faunus::simulation > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ INFO  faunus::simulation > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ INFO  faunus::simulation > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::simulation > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::simulation > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::simulation > Initial energy = 6912098251.87 kJ/mol
+ INFO  faunus::simulation > Net charge = 0.0000e0 e
+ INFO  faunus::simulation > Initial energy = 9856831186.55 kJ/mol
+ INFO  faunus::simulation > Net charge = 0.0000e0 e
+ INFO  faunus::simulation > Initial energy = 22313258127147.26 kJ/mol
+ INFO  faunus::simulation > Net charge = 0.0000e0 e
+ INFO  faunus::simulation > Final energy = 10.31 kJ/mol
+ INFO  faunus::simulation > Net charge = 0.0000e0 e
+ WARN  faunus::simulation > Energy drift: 2.81e-5 kJ/mol (relative: 2.73e-6) ⚠️
+ INFO  faunus::simulation > Saved simulation state to state.yaml
+ INFO  faunus::cli > faunus 3.0.0-beta.3 (git v3.0.0-beta.3-1-gb30ff93)
+ INFO  faunus::analysis::multipole > Multipole: selection 'molecule macroion' matched 30 groups
+ INFO  faunus::state               > Restored simulation state
+ INFO  faunus::simulation          > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ INFO  faunus::simulation          > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::simulation          > Initial energy = 10.31 kJ/mol
+ INFO  faunus::simulation          > Net charge = 0.0000e0 e
+ INFO  faunus::simulation > Final energy = 14.04 kJ/mol
+ INFO  faunus::simulation > Net charge = 0.0000e0 e
+ WARN  faunus::simulation > Energy drift: 4.13e-1 kJ/mol (relative: 2.94e-2) ⚠️
+ INFO  faunus::simulation > Saved simulation state to state.yaml
+ INFO  faunus::cli > faunus 3.0.0-beta.3 (git v3.0.0-beta.3-1-gb30ff93)
+ INFO  faunus::analysis::multipole > Multipole: selection 'molecule macroion' matched 30 groups
+ INFO  faunus::state               > Restored simulation state
+ INFO  faunus::simulation          > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ INFO  faunus::simulation          > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::simulation          > Initial energy = 14.04 kJ/mol
+ INFO  faunus::simulation          > Net charge = 0.0000e0 e
+ INFO  faunus::simulation > Final energy = 14.39 kJ/mol
+ INFO  faunus::simulation > Net charge = 0.0000e0 e
+ WARN  faunus::simulation > Energy drift: 4.91e-5 kJ/mol (relative: 3.41e-6) ⚠️
+ INFO  faunus::simulation > Saved simulation state to state.yaml
+ INFO  faunus::cli > faunus 3.0.0-beta.3 (git v3.0.0-beta.3-1-gb30ff93)
+ INFO  faunus::analysis::multipole > Multipole: selection 'molecule macroion' matched 30 groups
+ INFO  faunus::state               > Restored simulation state
+ INFO  faunus::simulation          > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ INFO  faunus::simulation          > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::simulation          > Initial energy = 14.39 kJ/mol
+ INFO  faunus::simulation          > Net charge = 0.0000e0 e
+ INFO  faunus::analysis::structure_writer > VMD visualization: vmd -e confout.tcl
+ INFO  faunus::simulation                 > Final energy = 12.06 kJ/mol
+ INFO  faunus::simulation                 > Net charge = 0.0000e0 e
+ INFO  faunus::simulation                 > Energy drift: 5.90e-13 kJ/mol (relative: 4.89e-14) ✅
+ INFO  faunus::simulation                 > Saved simulation state to state.yaml
+ INFO  faunus::analysis::structure_writer > VMD visualization: vmd -e confout.tcl
+ INFO  faunus::simulation                 > Final energy = 12.06 kJ/mol
+ INFO  faunus::simulation                 > Net charge = 0.0000e0 e
+ INFO  faunus::simulation                 > Energy drift: 4.33e-12 kJ/mol (relative: 3.59e-13) ✅
+ INFO  faunus::simulation                 > Saved simulation state to state.yaml
+ INFO  faunus::analysis::structure_writer > VMD visualization: vmd -e confout.tcl
+ INFO  faunus::simulation                 > Final energy = 16.41 kJ/mol
+ INFO  faunus::simulation                 > Net charge = 0.0000e0 e
+ INFO  faunus::simulation                 > Energy drift: 1.78e-14 kJ/mol (relative: 1.08e-15) ✅
+ INFO  faunus::simulation                 > Saved simulation state to state.yaml
+
+real	183m14.704s
+user	543m18.832s
+sys	0m10.856s

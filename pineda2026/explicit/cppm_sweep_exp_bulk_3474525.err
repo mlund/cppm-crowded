@@ -1,0 +1,77 @@
+The following modules were not unloaded:
+  (Use "module --force purge" to unload all):
+
+  1) SoftwareTree/Milan
+ INFO  faunus::cli > faunus 3.0.0-beta.2 (git v3.0.0-beta.2-54-g693f425)
+ WARN  faunus::montecarlo::speciation > SpeciationMove: `temperature` is deprecated; the system temperature is used.
+ INFO  faunus::montecarlo::speciation > SpeciationMove: 1 reactions, kT = 2.4790 kJ/mol
+ INFO  faunus::simulation             > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ INFO  faunus::simulation             > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::simulation             > Initial energy = 32975.83 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::cli > faunus 3.0.0-beta.2 (git v3.0.0-beta.2-54-g693f425)
+ WARN  faunus::montecarlo::speciation > SpeciationMove: `temperature` is deprecated; the system temperature is used.
+ INFO  faunus::montecarlo::speciation > SpeciationMove: 1 reactions, kT = 2.4790 kJ/mol
+ INFO  faunus::simulation             > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ INFO  faunus::simulation             > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::simulation             > Initial energy = 8574.54 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::cli > faunus 3.0.0-beta.2 (git v3.0.0-beta.2-54-g693f425)
+ WARN  faunus::montecarlo::speciation > SpeciationMove: `temperature` is deprecated; the system temperature is used.
+ INFO  faunus::montecarlo::speciation > SpeciationMove: 1 reactions, kT = 2.4790 kJ/mol
+ INFO  faunus::simulation             > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ INFO  faunus::simulation             > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::simulation             > Initial energy = 457.83 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::simulation             > Final energy = -231.05 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::simulation             > Energy drift: 7.91e-11 kJ/mol (relative: 3.42e-13) ✅
+ INFO  faunus::simulation             > Saved simulation state to state.yaml
+ INFO  faunus::cli > faunus 3.0.0-beta.2 (git v3.0.0-beta.2-54-g693f425)
+ WARN  faunus::montecarlo::speciation > SpeciationMove: `temperature` is deprecated; the system temperature is used.
+ INFO  faunus::montecarlo::speciation > SpeciationMove: 1 reactions, kT = 2.4790 kJ/mol
+ INFO  faunus::state                  > Restored simulation state
+ INFO  faunus::simulation             > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ INFO  faunus::simulation             > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::simulation             > Initial energy = -231.05 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::simulation             > Final energy = -245.96 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::simulation             > Energy drift: 2.49e-10 kJ/mol (relative: 1.01e-12) ✅
+ INFO  faunus::simulation             > Saved simulation state to state.yaml
+ INFO  faunus::cli > faunus 3.0.0-beta.2 (git v3.0.0-beta.2-54-g693f425)
+ WARN  faunus::montecarlo::speciation > SpeciationMove: `temperature` is deprecated; the system temperature is used.
+ INFO  faunus::montecarlo::speciation > SpeciationMove: 1 reactions, kT = 2.4790 kJ/mol
+ INFO  faunus::state                  > Restored simulation state
+ INFO  faunus::simulation             > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ INFO  faunus::simulation             > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::simulation             > Initial energy = -245.96 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::simulation             > Final energy = -234.86 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::simulation             > Energy drift: 6.02e-10 kJ/mol (relative: 2.56e-12) ✅
+ INFO  faunus::simulation             > Saved simulation state to state.yaml
+ INFO  faunus::cli > faunus 3.0.0-beta.2 (git v3.0.0-beta.2-54-g693f425)
+ WARN  faunus::montecarlo::speciation > SpeciationMove: `temperature` is deprecated; the system temperature is used.
+ INFO  faunus::montecarlo::speciation > SpeciationMove: 1 reactions, kT = 2.4790 kJ/mol
+ INFO  faunus::state                  > Restored simulation state
+ INFO  faunus::simulation             > Medium: 𝑇 = 298.15 K, εᵣ = 78.36, λᴮ = 7.15 Å
+ INFO  faunus::simulation             > Thermal energy: 2.48 kJ/mol
+ INFO  faunus::simulation             > Initial energy = -234.86 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::simulation             > Final energy = -202.55 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::simulation             > Energy drift: 2.20e-10 kJ/mol (relative: 1.09e-12) ✅
+ INFO  faunus::simulation             > Saved simulation state to state.yaml
+ INFO  faunus::simulation             > Final energy = -301.52 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::simulation             > Energy drift: 8.77e-11 kJ/mol (relative: 2.91e-13) ✅
+ INFO  faunus::simulation             > Saved simulation state to state.yaml
+ INFO  faunus::simulation             > Final energy = -252.47 kJ/mol
+ INFO  faunus::simulation             > Net charge = 0.0000e0 e
+ INFO  faunus::simulation             > Energy drift: 1.16e-10 kJ/mol (relative: 4.61e-13) ✅
+ INFO  faunus::simulation             > Saved simulation state to state.yaml
+
+real	520m0.203s
+user	1545m53.588s
+sys	0m0.473s

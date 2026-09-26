@@ -1,0 +1,24 @@
+\begin{thebibliography}{1}
+
+\bibitem{israelachvili2011}
+Jacob~N. Israelachvili.
+\newblock {\em Intermolecular and Surface Forces}.
+\newblock Academic Press, London, 3 edition, 2011.
+
+\bibitem{fanourgakis2009}
+George~S. Fanourgakis, Thomas~E. Markland, and David~E. Manolopoulos.
+\newblock A fast path integral method for polarizable force fields.
+\newblock {\em The Journal of Chemical Physics}, 131(9):094102, 09 2009.
+
+\bibitem{Wertheim1963}
+M.~S. Wertheim.
+\newblock Exact solution of the {Percus-Yevick} integral equation for hard
+  spheres.
+\newblock {\em Physical Review Letters}, 10(8):321--323, 1963.
+
+\bibitem{Thiele1963}
+Everett Thiele.
+\newblock Equation of state for hard spheres.
+\newblock {\em The Journal of Chemical Physics}, 39(2):474--479, 1963.
+
+\end{thebibliography}
