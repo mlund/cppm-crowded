@@ -362,9 +362,9 @@ print("Saved pressure_components.png")
 # ── 3b. Pressure breakdown — diverging stacked bar ────────────────────────────
 # (col: DataFrame key, label: legend display, color)
 stack_comps = [
-    ('Na',       r'Na$^+$', '#60b4ff'),
+    ('Na',       r'Na$^+$', '#6ddc9e'),
     ('Cl',       r'Cl$^-$', '#ffb347'),
-    ('macroion', 'Macro-ion',    '#6ddc9e'),
+    ('macroion', 'Macro-ion',    '#60b4ff'),
     ('excess',   'Excess',  '#ff7f7f'),
 ]
 
@@ -400,11 +400,17 @@ ax.errorbar(x3, tot_vals, yerr=tot_errs, fmt='D', color='black',
             markersize=7, capsize=3, lw=1.2, label='Total', zorder=5,
             )
 
+_ytxt_pad = (ax.get_ylim()[1] - ax.get_ylim()[0]) * 0.02
+for _i, (_tv, _te) in enumerate(zip(tot_vals, tot_errs)):
+    ax.text(x3[_i], _tv + _te + _ytxt_pad, f'{_tv:.1f} $\\pm$ {_te:.1f}',
+            ha='center', va='bottom', color='black', fontsize=9,
+            fontweight='normal', zorder=6)
+
 ax.set_axisbelow(True)
-ax.axhline(0, color='black', lw=1.5, ls='--')
+ax.axhline(0, color='black', lw=1.5, ls='--',zorder=0)
 ax.set_xticks(x3)
 ax.set_xticklabels([SYS_LABEL.get(t, t) for t in non_bulk_types], fontsize=12)
-ax.set_ylabel(r'$\Delta p_\mathrm{osm} = p_\mathrm{osm}^{\mathrm{system}} - p_\mathrm{osm}^{\mathrm{bulk}}$ [mM]', fontsize=14)
+ax.set_ylabel(r'$p_\mathrm{osm} = p_\mathrm{osm}^{\mathrm{system}} - p_\mathrm{osm}^{\mathrm{bulk}}$ [mM]', fontsize=14)
 
 # auto-extend negative y limit by 15 % to avoid bar/legend overlap
 ymin, ymax = ax.get_ylim()
@@ -423,21 +429,20 @@ for i, t in enumerate(non_bulk_types):
         (delta_std.loc[t, c] if t in delta_std.index else 0.0) ** 2
         for c in _ideal_cols))
     _x_left = x3[i] - _bar_w / 2
-    if _ideal_pos > 0:
-        ax.add_patch(mpatches.Rectangle(
-            (_x_left, 0), _bar_w, _ideal_pos,
-            fill=False, edgecolor='dimgray', linewidth=1.5, zorder=6))
-    if _ideal_neg < 0:
-        ax.add_patch(mpatches.Rectangle(
-            (_x_left, _ideal_neg), _bar_w, -_ideal_neg,
-            fill=False, edgecolor='dimgray', linewidth=1.5, zorder=6))
+    ax.add_patch(mpatches.Rectangle(
+    (_x_left, _ideal_neg), _bar_w, _ideal_pos - _ideal_neg,
+    fill=False, edgecolor='black', linewidth=1.5, zorder=6))
     _y_text = min(0, _ideal_neg) - _txt_pad
-    ax.text(x3[i], _y_text, f'{_ideal_sum:.2f} $\\pm$ {_ideal_sem:.2f}',
+    ax.text(x3[i], _y_text, f'{_ideal_sum:.1f} $\\pm$ {_ideal_sem:.1f}',
             ha='center', va='top', color='black', fontsize=9)
 
 for col, i, val, sem, rect in bar_segs:
     h = rect.get_height()
-    label_str = f'{val:.2f}' if col == 'macroion' else f'{val:.2f} $\\pm$ {sem:.2f}'
+    label_str = (
+    f'$\\mathbf{{{val:.1f}}}$' 
+    if col == 'macroion' 
+    else f'$\\mathbf{{{val:.1f} \\pm {sem:.1f}}}$'
+    )
     if col == 'excess':
         ylo, yhi = ax.get_ylim()
         _pad = (yhi - ylo) * 0.01

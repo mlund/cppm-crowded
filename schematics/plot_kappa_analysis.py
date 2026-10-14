@@ -931,6 +931,100 @@ if _eo_order:
     plt.close(_eo_fig)
     print("Saved rdf_explicit_overlay_black.png")
 
+# ── 2c2. Mayer-weighted h(r)·r² — explicit + best-κ + PY ─────────────────────
+print("\nPlotting Mayer-weighted h(r)·r² comparison...")
+_mayer_order = [t for t in ('isotropic', 'dipolar', 'quadrupolar', 'neutral') if t in best_kappas]
+
+if _mayer_order:
+    _mayer_fig, _mayer_axes = plt.subplots(1, 2, figsize=(10, 4), sharey=False)
+    _mayer_ax_exp  = _mayer_axes[0]   # explicit only
+    _mayer_ax_best = _mayer_axes[1]   # best-κ implicit vs explicit
+
+    _mayer_neu_r = _mayer_neu_g = None
+    for _mayer_type in _mayer_order:
+        _mayer_ls  = _bk_styles.get(_mayer_type, '-')
+        _mayer_col = colors.get(_mayer_type, '#1f77b4')
+
+        _mr_exp, _mg_exp, _mg_exp_sem = replica_mean_sem(
+            list(iter_explicit_folders(_mayer_type)), load_rdf, 'g(r)')
+        if _mr_exp is None:
+            continue
+        _mayer_mask_exp = (_mr_exp >= 2 * r_np) & (_mr_exp <= _plot_rmax)
+        _mr  = _mr_exp[_mayer_mask_exp]
+        _mh_exp = (_mg_exp[_mayer_mask_exp] - 1.0) * _mr**2
+
+        # explicit panel
+        _mayer_ax_exp.plot(_mr, _mh_exp, color='black', linewidth=1.5,
+                           linestyle=_mayer_ls, label=_mayer_type.capitalize())
+        _mh_exp_lo = ((_mg_exp - _mg_exp_sem)[_mayer_mask_exp] - 1.0) * _mr**2
+        _mh_exp_hi = ((_mg_exp + _mg_exp_sem)[_mayer_mask_exp] - 1.0) * _mr**2
+        _mayer_ax_exp.fill_between(_mr, _mh_exp_lo, _mh_exp_hi,
+                                   color='black', alpha=0.12, lw=0)
+
+        if _mayer_type == 'neutral':
+            _mayer_neu_r, _mayer_neu_g = _mr, _mg_exp[_mayer_mask_exp]
+
+        # best-κ implicit vs explicit panel
+        _bk = best_kappas[_mayer_type]
+        _bimp_fldrs = [f for k, _l, f in folders_by_type.get(_mayer_type, []) if k == _bk]
+        if not _bimp_fldrs:
+            continue
+        _mr_imp, _mg_imp, _mg_imp_sem = replica_mean_sem(_bimp_fldrs, load_rdf, 'g(r)')
+        if _mr_imp is None:
+            continue
+        _mayer_mask_imp = (_mr_imp >= 2 * r_np) & (_mr_imp <= _plot_rmax)
+        _mri  = _mr_imp[_mayer_mask_imp]
+        _mh_imp = (_mg_imp[_mayer_mask_imp] - 1.0) * _mri**2
+        _mh_exp_i = (np.interp(_mri, _mr_exp, _mg_exp) - 1.0) * _mri**2
+
+        _mayer_ax_best.plot(_mri, _mh_exp_i, color='black', linewidth=1.5,
+                            linestyle=_mayer_ls)
+        _mayer_ax_best.plot(_mri, _mh_imp, color=_mayer_col, linewidth=1.5,
+                            linestyle=_mayer_ls, label=_mayer_type.capitalize())
+        _mh_imp_lo = ((_mg_imp - _mg_imp_sem)[_mayer_mask_imp] - 1.0) * _mri**2
+        _mh_imp_hi = ((_mg_imp + _mg_imp_sem)[_mayer_mask_imp] - 1.0) * _mri**2
+        _mayer_ax_best.fill_between(_mri, _mh_imp_lo, _mh_imp_hi,
+                                    color=_mayer_col, alpha=0.25, lw=0)
+
+    # PY curve on both panels
+    if _mayer_neu_r is not None:
+        _py_fit_mask = np.ones(len(_mayer_neu_r), dtype=bool)
+        if args.rdf_rmax is not None:
+            _py_fit_mask &= (_mayer_neu_r <= args.rdf_rmax)
+        _py_fit_r = _mayer_neu_r[_py_fit_mask]
+        _py_fit_g = _mayer_neu_g[_py_fit_mask]
+        from scipy.optimize import minimize_scalar as _msc
+        def _mayer_py_obj(sigma):
+            phi = 0.3 * (sigma / (2 * r_np)) ** 3
+            w = _py_fit_r ** 2
+            return np.sqrt(np.mean((w * (percus_yevick_gr(_py_fit_r, sigma, phi) - _py_fit_g)) ** 2))
+        _mayer_py_sigma = _msc(_mayer_py_obj,
+                               bounds=(2 * r_np, 2 * r_np + args.bead_diameter),
+                               method='bounded').x
+        _mayer_py_phi = 0.3 * (_mayer_py_sigma / (2 * r_np)) ** 3
+        _mayer_py_r = np.linspace(_mayer_py_sigma,
+                                  _mri.max() if np.isfinite(_plot_rmax) else _mr.max(), 300)
+        _mayer_py_h = (percus_yevick_gr(_mayer_py_r, _mayer_py_sigma, _mayer_py_phi) - 1.0) * _mayer_py_r**2
+        for _max in (_mayer_ax_exp, _mayer_ax_best):
+            _max.plot(_mayer_py_r, _mayer_py_h, color='#EF9F27', linewidth=1.5,
+                      linestyle='-.', zorder=1, label='PY hard sphere')
+
+    for _max in (_mayer_ax_exp, _mayer_ax_best):
+        _max.axhline(0.0, color='gray', linewidth=0.6, linestyle=':')
+        _max.set_xlim(2 * r_np - 0.4, _plot_rmax_lim)
+        _max.xaxis.set_major_locator(plt.MultipleLocator(4))
+        _max.set_xlabel('r [Å]', fontsize=11)
+        _max.legend(fontsize=9, frameon=False)
+
+    _mayer_ax_exp.set_ylabel(r'$(g(r)-1)\,r^2$', fontsize=11)
+    ax_title(_mayer_ax_exp,  'Explicit simulations — h(r)·r²')
+    ax_title(_mayer_ax_best, 'Best-κ implicit vs explicit — h(r)·r²')
+    fig_title(_mayer_fig, r'Mayer-weighted correlation: $(g(r)-1)\,r^2$', fontweight='bold')
+    _mayer_fig.tight_layout()
+    _mayer_fig.savefig(plot_dir / 'mayer_hr2_comparison.png', dpi=150, bbox_inches='tight')
+    plt.close(_mayer_fig)
+    print("Saved mayer_hr2_comparison.png")
+
 # ── 3. Pex vs Energy correlation (implicit, all kappas) ──────────────────────
 print("\nPlotting Pex vs Energy...")
 sys_types_sorted = sorted(pressure_data.keys())
