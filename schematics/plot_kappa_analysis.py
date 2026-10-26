@@ -17,11 +17,13 @@ parser.add_argument('plots', help='Path to the output folder for plots')
 parser.add_argument('--no-titles', action='store_true', help='Suppress all plot titles and suptitles')
 parser.add_argument('--rdf-rmax', type=float, default=None,
                     help='Upper bound of r [Å] used when computing the RMSD for best-kappa selection (default: no limit)')
-parser.add_argument('--fit-mode', choices=['peak', 'rmsd', 'weighted'], default='rmsd',
+parser.add_argument('--fit-mode', choices=['peak', 'rmsd', 'weighted', 'mayer'], default='rmsd',
                     help='Objective for best-kappa and PY fits: '
                          'peak = match g(r) peak height; '
                          'rmsd = minimise RMSD of g(r); '
-                         'weighted = minimise RMSD of g(r)·r² (upweights long-range tail). '
+                         'weighted = minimise RMSD of g(r)·r² (upweights long-range tail); '
+                         'mayer = minimise |∫(g_imp−g_exp)r²dr| (matches integrated Mayer function, '
+                         'equivalent to matching the second virial coefficient B₂). '
                          '(default: rmsd)')
 parser.add_argument('--np-radius', type=float, default=20.0,
                     help='NP radius R [Å] (default: 20 = sigma_MP/2). Sets the CPPM–CPPM lower r '
@@ -311,6 +313,8 @@ def find_best_kappa_rdf(folders_by_type):
                 if args.fit_mode == 'weighted':
                     w = r_plot ** 2
                     score = np.sqrt(np.mean((w * (g_imp_p - g_exp_p)) ** 2))
+                elif args.fit_mode == 'mayer':
+                    score = abs(np.trapezoid((g_imp_p - g_exp_p) * r_plot ** 2, r_plot))
                 else:
                     score = np.sqrt(np.mean((g_imp_p - g_exp_p) ** 2))
             kappa_list.append(kappa)
@@ -324,7 +328,7 @@ def find_best_kappa_rdf(folders_by_type):
         best_idx  = int(np.argmin(score_arr))
         best_kappas[sys_type] = kappa_arr[best_idx]
 
-        metric_label = {'peak': 'peak |Δg|', 'rmsd': 'RDF RMSD', 'weighted': 'RDF RMSD·r²'}[args.fit_mode]
+        metric_label = {'peak': 'peak |Δg|', 'rmsd': 'RDF RMSD', 'weighted': 'RDF RMSD·r²', 'mayer': '|ΔB₂| (Mayer integral)'}[args.fit_mode]
         try:
             f_score      = interp1d(kappa_arr, score_arr, kind='cubic')
             k_fine       = np.linspace(kappa_arr[0], kappa_arr[-1], 10000)
@@ -1096,6 +1100,7 @@ if n_sys > 0:
         cb = fig_pe.colorbar(sc, ax=ax_pe)
         cb.set_label(r'$\kappa^{-1}$ [Å]')
         cb.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{1/x:.1f}'))
+        cb.ax.invert_yaxis()
 
     fig_title(fig_pe, r'$P_{ex}$ vs mean energy — implicit simulations', fontweight='bold')
     fig_pe.tight_layout()
@@ -1333,6 +1338,7 @@ for sys_type, items in sorted(folders_by_type.items()):
     _cb6 = fig.colorbar(sm, ax=ax)
     _cb6.set_label(r'$\kappa^{-1}$ [Å]')
     _cb6.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{1/x:.1f}'))
+    _cb6.ax.invert_yaxis()
 
     fig.tight_layout()
     fname = f'rdf_overlay_{sys_type}'
@@ -1397,6 +1403,7 @@ if len(_overlay_types) >= 2:
     _cb_comb.set_label(r'$\kappa^{-1}$ [Å]', fontsize=13)
     _cb_comb.ax.tick_params(labelsize=12)
     _cb_comb.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{1/x:.1f}'))
+    _cb_comb.ax.invert_yaxis()
 
     fig_comb.tight_layout()
     fig_comb.savefig(plot_dir / 'rdf_overlay_combined.png', dpi=150, bbox_inches='tight')
@@ -1585,6 +1592,7 @@ for sys_type, items in sorted(folders_by_type.items()):
     sm.set_array([])
     _cb7 = fig.colorbar(sm, cax=cax, orientation='horizontal', label=r'$\kappa^{-1}$ [Å]')
     _cb7.ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{1/x:.1f}'))
+    _cb7.ax.invert_xaxis()
     fname = f'multipole_energy_{sys_type}'
     fig.savefig(plot_dir / f'{fname}.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
@@ -1718,6 +1726,7 @@ if len(_me_types) >= 2:
         _cb_me.set_label(r'$\kappa^{-1}$ [Å]', fontsize=16)
         _cb_me.ax.tick_params(labelsize=15)
         _cb_me.ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{1/x:.1f}'))
+        _cb_me.ax.invert_xaxis()
 
         fig_title(fig_me, 'Combined multipole energy decomposition — all systems', fontweight='bold')
         fig_me.align_ylabels(axes_me.flatten())
@@ -1950,6 +1959,7 @@ for sys_type, items in sorted(folders_by_type.items()):
     sm.set_array([])
     _cb8 = fig.colorbar(sm, cax=cax, orientation='horizontal', label=r'$\kappa^{-1}$ [Å]')
     _cb8.ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{1/x:.1f}'))
+    _cb8.ax.invert_xaxis()
     fname = f'multipole_corr_{sys_type}'
     fig.savefig(plot_dir / f'{fname}.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
@@ -2060,6 +2070,7 @@ if len(_corr_types) >= 2:
         _cb_cc.set_label(r'$\kappa^{-1}$ [Å]', fontsize=13)
         _cb_cc.ax.tick_params(labelsize=12)
         _cb_cc.ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{1/x:.1f}'))
+        _cb_cc.ax.invert_xaxis()
 
         fig_title(fig_cc, 'Combined orientational correlations — all systems', fontweight='bold')
         fig_cc.savefig(plot_dir / 'multipole_corr_combined.png', dpi=150, bbox_inches='tight')
