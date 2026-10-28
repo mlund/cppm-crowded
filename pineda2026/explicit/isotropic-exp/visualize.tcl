@@ -11,7 +11,7 @@ set isovalue 1.0
 array set type_radius {MP 20.0  PP 2.0  NP 2.0  Na 2.0  Cl 2.0  UP 2.0}
 
 # ColorID per particle type
-array set type_color  {MP 6    PP 1    NP 0    Na 3    Cl 7    UP 8 }
+array set type_color  {MP 6    PP 1    NP 0    Na 7    Cl 3    UP 8 }
 
 # Material per particle type
 array set type_material  {MP Opaque    PP Edgy    NP Edgy    Na Edgy    Cl Edgy   UP Edgy }
