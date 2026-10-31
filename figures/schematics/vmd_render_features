@@ -1,0 +1,5 @@
+color Display Background white
+axes location off
+pbc box -off
+display depthcue off
+display shadows off

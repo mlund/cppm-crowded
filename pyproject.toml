@@ -1,0 +1,37 @@
+[project]
+name = "cppm-crowded"
+version = "0.1.0"
+description = "Charged patchy particle models in crowded solution: simulations and analysis"
+requires-python = ">=3.12"
+dependencies = [
+    "jinja2>=3.1.6",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.4",
+    "pandas>=3.1.0",
+    "pyyaml>=6.0.3",
+    "scikit-learn>=1.9.1",
+    "scipy>=1.18.1",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.3",
+]
+
+[tool.uv]
+package = false  # analysis scripts, not an installable library
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+    "E501",  # formatter owns wrapping; leftovers are long strings and labels
+    "E741",  # `l` is the multipole order in the physics notation
+    "B905",  # zip() pairs equal-length per-system lists; strict= adds noise
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["autocorr", "invariants", "kappa_invariants"]  # sibling module in analysis/

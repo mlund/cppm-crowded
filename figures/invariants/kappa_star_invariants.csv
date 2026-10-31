@@ -1,0 +1,10 @@
+system,invariant,debye_star,debye_lo,debye_hi,kappa_star,frac_samples_bracketed,scan_debye_min,scan_debye_max,note,chi2_min,n_terms,pca_var_explained,exp_residual_over_imp
+isotropic,KB,23.27,21.82,24.89,0.04297,1,9.615,37.88,,,,,
+isotropic,joint,24.49,,,0.04083,,,,,17.02,2,0.9376,5.095
+dipolar,KB,,,,,0.078,9.615,37.88,outside scan: GP mean > 0 throughout,,,,
+dipolar,mu,,,,,0.074,9.615,37.88,outside scan: GP mean < 0 throughout,,,,
+dipolar,Q,20.11,17.47,27.53,0.04974,0.998,9.615,37.88,,,,,
+dipolar,joint,10.54,,,0.09491,,,,,44.99,2,0.9929,12.87
+quadrupolar,KB,,,,,0.25,9.615,37.88,outside scan: GP mean > 0 throughout,,,,
+quadrupolar,Q,15.84,14.49,17.79,0.06313,1,9.615,37.88,,,,,
+quadrupolar,joint,17.83,,,0.05608,,,,,8.173,2,0.9958,6.637

@@ -1,0 +1,81 @@
+# Crowded macroion suspension at fixed volume fraction with explicit 1:1
+# salt and grand-canonical Na+/Cl- pair insertion.
+# Important: when running for the first time, use a large displacement parameter for
+#            the macroions so that they can escape interlocked configs. That's also the
+#            why we start with almost no microions (leave space) and pull in via GCMC.
+
+atoms:
+  - {name: Na, mass: 22,    charge:  1.0, sigma:  4.0, epsilon: 2.479}
+  - {name: Cl, mass: 35,    charge: -1.0, sigma:  4.0, epsilon: 2.479}
+
+molecules:
+  - name: Cations
+    atoms: [Na]
+    atomic: true
+    activity: 0.1
+  - name: Anions
+    atoms: [Cl]
+    atomic: true
+    activity: 0.1
+
+system:
+  cell: !Cuboid [149.64407707272974, 149.64407707272974, 149.64407707272974]
+  medium:
+    permittivity: !Water
+    temperature: 298.15
+
+  blocks:
+    - molecule: Cations
+      N: 456
+      active: 228
+      insert: !RandomAtomPos {}
+    - molecule: Anions
+      N: 456
+      active: 228
+      insert: !RandomAtomPos {}
+
+  energy:
+    - !Nonbonded
+      default:
+        - !Fanourgakis {cutoff: 74.82203853636487}
+        - !WeeksChandlerAndersen {mixing: LB}
+
+analysis:
+  # Per-step salt counts and virtual volume moves, joined on `step` offline to get the
+  # Maxwell cross term dp/dmu_s = d<N_s>/dV and the salt fluctuations.
+  - !Energy
+    file: energy.csv.gz
+    frequency: !Every 10
+  - !VirtualVolumeMove
+    dV: 0.1
+    method: Isotropic
+    file: vvm.csv.gz
+    frequency: !Every 1
+  - !CollectiveVariable
+    property: count
+    selection: "atomtype Na"
+    file: n_na.csv.gz
+    frequency: !Every 1
+  - !CollectiveVariable
+    property: count
+    selection: "atomtype Cl"
+    file: n_cl.csv.gz
+    frequency: !Every 1
+
+propagate:
+  seed: !Hardware
+  criterion: Metropolis
+  steps: 10000
+  collections:
+    - !Stochastic
+      moves:
+        - !TranslateAtom {molecule: Cations, atom: Na, dp: 25.0}
+        - !TranslateAtom {molecule: Anions,  atom: Cl, dp: 25.0}
+    - !Deterministic
+      moves:
+        - !SpeciationMove
+          temperature: 298.15
+          repeat: 228
+          reactions:
+            - ["= Cations + Anions", !dG 0.0]
+

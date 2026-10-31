@@ -1,0 +1,38 @@
+{
+    "title": "Simulation data and analysis: effective screening length in crowded solutions of charged patchy macroions",
+    "description": "Faunus inputs, Monte Carlo simulation results and Python analysis scripts for explicit- and implicit-ion simulations of charged patchy macroions (CPPM) at volume fraction 0.30. The data reproduce all figures and tables of the accompanying manuscript submitted to The Journal of Chemical Physics.",
+    "creators": [
+        {
+            "name": "Pineda, Sebastian P.",
+            "affiliation": "Division of Computational Chemistry, Department of Chemistry, Lund University, Sweden",
+            "orcid": "0000-0001-8270-2476"
+        },
+        {
+            "name": "Lund, Mikael",
+            "affiliation": "Division of Computational Chemistry, Department of Chemistry, Lund University, Sweden",
+            "orcid": "0000-0001-8178-8175"
+        }
+    ],
+    "keywords": [
+        "reproducible science",
+        "Monte Carlo",
+        "electrostatic screening",
+        "osmotic pressure",
+        "macromolecular crowding",
+        "charged patchy particles",
+        "Kirkwood-Buff integrals",
+        "Faunus"
+    ],
+    "related_identifiers": [
+        {
+            "scheme": "url",
+            "identifier": "https://github.com/mlund/cppm-crowded",
+            "relation": "isSupplementTo"
+        }
+    ],
+    "license": {
+        "id": "CC-BY-4.0"
+    },
+    "access_right": "open",
+    "upload_type": "dataset"
+}

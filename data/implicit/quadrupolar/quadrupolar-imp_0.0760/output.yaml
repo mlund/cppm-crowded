@@ -1,0 +1,132 @@
+version:
+  faunus: 3.0.0-beta.2
+  git_revision: v3.0.0-beta.2-54-g693f425
+medium:
+  permittivity: Water
+  salt: null
+  temperature: 298.15
+blocks:
+- molecule: macroion
+  N: 30
+  active: null
+  insert: !GridCOM
+    rotate: true
+cell: !Cuboid
+- 149.64407707272974
+- 149.64407707272974
+- 149.64407707272974
+energy_change:
+  drift: 1.6513013179064728e-11
+  final: -181.2438302455902
+  initial: -257.51607165184924
+energy_timers:
+- nonbonded:
+    total: 100.0
+    energy: 33.74
+    update: 66.26
+propagate:
+  steps: 40000
+  seed: Hardware
+  collections:
+  - !Stochastic
+    cycles: 1
+    elapsed_seconds: 8762.884710636
+    moves:
+    - !TranslateMolecule
+      molecule: macroion
+      max_displacement: 4.0
+      directions: xyz
+      weight: 1.0
+      repeat: 30
+      statistics:
+        num_trials: 598500
+        num_accepted: 303134
+        mean_square_displacement:
+          mean: 1.7301343422574238
+          samples: 598500
+        elapsed_seconds: 0.0
+        info: {}
+        energy_change_sum: -105.26934561410465
+        acceptance_ratio: 0.5064895572263993
+    - !RotateMolecule
+      molecule: macroion
+      max_angle: 0.4
+      weight: 1.0
+      repeat: 30
+      statistics:
+        num_trials: 601500
+        num_accepted: 339373
+        mean_square_displacement:
+          mean: 0.021636539025977015
+          samples: 601500
+        elapsed_seconds: 0.0
+        info: {}
+        energy_change_sum: 181.54158702034718
+        acceptance_ratio: 0.5642111388196176
+  criterion: MetropolisHastings
+analysis:
+- energy:
+    num_samples: 4000
+    mean: -215.3164396125006
+- rdf:
+    num_samples: 4000
+    num_bins: 299
+- multipole:
+    selection: molecule macroion
+    num_samples: 4000
+    charge:
+      mean: -8.0
+      error: 0.0
+    capacitance: 0.0
+    dipole_moment:
+      mean: 43.00991809905175
+      error: 0.0
+    quadrupole_moment:
+      mean: 6869.221509646802
+      error: 0.0
+    quadrupole_tensor:
+      order:
+      - xx
+      - xy
+      - xz
+      - yy
+      - yz
+      - zz
+      values:
+      - -26.108591057927736
+      - 29.748437634141695
+      - -18.66982941370996
+      - 56.23665620722977
+      - -4.783080542465198
+      - -30.128065149302046
+      errors:
+      - 2487.2151874340757
+      - 2202.7596092116482
+      - 2131.7916669110114
+      - 2520.3095386266664
+      - 2189.689372400495
+      - 2501.577410339227
+- multipole_distribution:
+    num_samples: 4000
+    num_bins: 140
+    bjerrum_length/Å: 7.152761924404171
+    kirkwood_factor: 0.9959257214878463
+- structure_writer:
+    file: confout.xyz
+    num_samples: 1
+- virtual_volume_move:
+    volume_displacement: 0.1
+    method: Isotropic
+    block_size: 1000
+    num_samples: 40000
+    num_perturbations: 40000
+    mean_free_energy: -4.111893696645552e-6
+    Pex/kT/Å³:
+      mean: 0.00004111893696645552
+      error: 8.659762302951275e-7
+    Pex/Pa:
+      mean: 169262.19745300963
+      error: 3564.708878573468
+    Pex/mM:
+      mean: 68.27960123345825
+      error: 1.437987361648995

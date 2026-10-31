@@ -1,0 +1,254 @@
+version:
+  faunus: 3.0.0-beta.3
+  git_revision: v3.0.0-beta.3
+medium:
+  permittivity: Water
+  salt: null
+  temperature: 298.15
+blocks:
+- molecule: macroion
+  N: 30
+  active: null
+  insert: !GridCOM
+    rotate: true
+- molecule: Cations
+  N: 600
+  active: 300
+  insert: !RandomAtomPos
+    directions: xyz
+- molecule: Anions
+  N: 120
+  active: 60
+  insert: !RandomAtomPos
+    directions: xyz
+cell: !Cuboid
+- 149.64407707272974
+- 149.64407707272974
+- 149.64407707272974
+energy_change:
+  drift: 3.751665644813329e-11
+  final: -1346.1708332009455
+  initial: -1400.6891130440142
+energy_timers:
+- nonbonded:
+    total: 100.0
+    energy: 8.89
+    update: 91.11
+propagate:
+  steps: 10000
+  seed: Hardware
+  collections:
+  - !Stochastic
+    cycles: 1
+    elapsed_seconds: 2862.995151789
+    moves:
+    - !TranslateMolecule
+      molecule: macroion
+      max_displacement: 4.0
+      directions: xyz
+      weight: 1.0
+      repeat: 30
+      statistics:
+        num_trials: 148320
+        num_accepted: 46609
+        mean_square_displacement:
+          mean: 0.619302124069371
+          samples: 148320
+        elapsed_seconds: 0.0
+        info: {}
+        energy_change_sum: -245.44053164747976
+        acceptance_ratio: 0.31424622437971955
+    - !RotateMolecule
+      molecule: macroion
+      max_angle: 0.4
+      weight: 1.0
+      repeat: 30
+      statistics:
+        num_trials: 151680
+        num_accepted: 56378
+        mean_square_displacement:
+          mean: 0.01088724420437592
+          samples: 151680
+        elapsed_seconds: 0.0
+        info: {}
+        energy_change_sum: 375.751653912582
+        acceptance_ratio: 0.37169040084388183
+  - !Deterministic
+    cycles: 1
+    elapsed_seconds: 46406.798957521
+    moves:
+    - !TranslateAtom
+      atom: Na
+      molecule: Cations
+      max_displacement: 14.0
+      preferential:
+        reference: molecule macroion
+        exponent: 2.0
+        offset: 5.0
+        sum_bias: 1.797439974637882e-11
+        mean_bias:
+          mean: 9.087608443536387e-17
+          samples: 3000000
+        bounding_radii:
+        - 20.003784214940595
+        - 20.00378421494108
+        - 20.00378421494045
+        - 20.003784214940303
+        - 20.00378421494118
+        - 20.003784214941046
+        - 20.00378421493988
+        - 20.003784214940392
+        - 20.003784214940705
+        - 20.003784214940264
+        - 20.003784214940605
+        - 20.00378421494073
+        - 20.003784214939486
+        - 20.003784214940588
+        - 20.00378421493948
+        - 20.003784214939376
+        - 20.00378421494028
+        - 20.003784214940016
+        - 20.00378421494074
+        - 20.003784214940403
+        - 20.00378421494059
+        - 20.00378421494042
+        - 20.003784214940065
+        - 20.003784214939923
+        - 20.003784214940023
+        - 20.003784214940445
+        - 20.003784214940325
+        - 20.003784214939085
+        - 20.003784214940417
+        - 20.003784214941383
+      weight: 1.0
+      repeat: 300
+      statistics:
+        num_trials: 3000000
+        num_accepted: 1971340
+        mean_square_displacement:
+          mean: 35.068904407698255
+          samples: 3000000
+        elapsed_seconds: 0.0
+        info: {}
+        energy_change_sum: 7.116542351621959
+        acceptance_ratio: 0.6571133333333333
+    - !TranslateAtom
+      atom: Cl
+      molecule: Anions
+      max_displacement: 14.0
+      preferential:
+        reference: molecule macroion
+        exponent: 2.0
+        offset: 5.0
+        sum_bias: 1.7316148515078565e-12
+        mean_bias:
+          mean: 2.0860165446853023e-17
+          samples: 600000
+        bounding_radii:
+        - 20.003784214940595
+        - 20.00378421494108
+        - 20.00378421494045
+        - 20.003784214940303
+        - 20.00378421494118
+        - 20.003784214941046
+        - 20.00378421493988
+        - 20.003784214940392
+        - 20.003784214940705
+        - 20.003784214940264
+        - 20.003784214940605
+        - 20.00378421494073
+        - 20.003784214939486
+        - 20.003784214940588
+        - 20.00378421493948
+        - 20.003784214939376
+        - 20.00378421494028
+        - 20.003784214940016
+        - 20.00378421494074
+        - 20.003784214940403
+        - 20.00378421494059
+        - 20.00378421494042
+        - 20.003784214940065
+        - 20.003784214939923
+        - 20.003784214940023
+        - 20.003784214940445
+        - 20.003784214940325
+        - 20.003784214939085
+        - 20.003784214940417
+        - 20.003784214941383
+      weight: 1.0
+      repeat: 60
+      statistics:
+        num_trials: 600000
+        num_accepted: 389126
+        mean_square_displacement:
+          mean: 34.44885427075885
+          samples: 600000
+        elapsed_seconds: 0.0
+        info: {}
+        energy_change_sum: -60.69240665518052
+        acceptance_ratio: 0.6485433333333334
+  - !Deterministic
+    cycles: 1
+    elapsed_seconds: 2234.936490535
+    moves:
+    - !SpeciationMove
+      reactions:
+      - - = Cations + Anions
+        - !dG 0.0
+      temperature: 298.15
+      per_reaction:
+      - reaction: = Cations + Anions
+        num_trials: 600000
+        num_accepted: 156195
+        mean_square_displacement:
+          mean: 0.0
+          samples: 443805
+        elapsed_seconds: 0.0
+        info: {}
+        energy_change_sum: 0.0
+        acceptance_ratio: 0.260325
+      weight: 1.0
+      repeat: 60
+      statistics:
+        num_trials: 600000
+        num_accepted: 156195
+        mean_square_displacement:
+          mean: 0.0
+          samples: 443805
+        elapsed_seconds: 0.0
+        info: {}
+        energy_change_sum: -22.21697811843734
+        acceptance_ratio: 0.260325
+  criterion: MetropolisHastings
+analysis:
+- energy:
+    num_samples: 4000
+    mean: -1370.4254478815003
+- virtual_volume_move:
+    volume_displacement: 0.1
+    method: Isotropic
+    block_size: 100
+    num_samples: 40000
+    num_perturbations: 40000
+    mean_free_energy: -6.936344169261588e-6
+    Pex/kT/Å³:
+      mean: 0.00006936344169261588
+      error: 2.1900597048613837e-6
+    Pex/Pa:
+      mean: 285528.0177445676
+      error: 9015.17270498838
+    Pex/mM:
+      mean: 115.18070476422388
+      error: 3.636679699365552
+- collective_variable:
+    property: Count
+    description: 'selection: atomtype Na'
+    num_samples: 40000
+    mean: 318.2163250000006
+    rms: 318.3131996556221
+- collective_variable:
+    property: Count
+    description: 'selection: atomtype Cl'
+    num_samples: 40000
+    mean: 78.21632499999951
+    rms: 78.60952280099367
