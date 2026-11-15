@@ -27,6 +27,7 @@ V_SIGMA = np.pi * SIGMA**3 / 6
 DR = 1.0  # g(r) bin width; reweighted and reference g share frames, so noise mostly cancels
 N_BLOCKS = 20  # block bootstrap over consecutive frames
 MIN_N_EFF = 0.1  # below this effective-sample fraction, reweighted averages are not trusted
+MIN_PAIRS = 100  # sampled pairs a bin needs before its mean orientation is shown
 REFERENCE = "ewald_40_1e-06"
 PRODUCTION = f"fan_{149.64407707272974 / 2:.1f}"
 CHARGE = {"MP": 0.0, "NP": -1.0, "PP": 1.0, "UP": 0.0}
@@ -334,6 +335,88 @@ def plot(table, speed, out):
     fig.savefig(out / "cutoff_speed.pdf")
 
 
+def plot_esi(data, table, out, n_boot=200):
+    """Production Fanourgakis(L/2) vs Yukawa Ewald on the same frames: g(r) and ⟨μ̂ᵢ·μ̂ⱼ⟩(r)."""
+    folders = sorted((data / "cutoff").glob("P18_*"))
+    fig, axes = plt.subplots(
+        4,
+        len(folders),
+        figsize=(10, 7),
+        sharex=True,
+        sharey="row",
+        height_ratios=[3, 1.2, 3, 1.2],
+        layout="constrained",
+    )
+    groups = implicit_groups(data / "implicit", "dipolar")
+    for col, folder in enumerate(folders):
+        kappa = float(folder.name.split("_")[1])
+        frames = np.load(folder / "frames.npz")
+        box, n = float(frames["box"]), frames["centre"].shape[1]
+        edges = np.arange(SIGMA * 0.75, box / 2 + DR, DR)
+        x = 0.5 * (edges[1:] + edges[:-1]) / SIGMA
+        counts, dip = pair_histograms(frames["centre"], frames["dipole"], box, edges)
+        sampled = counts.sum(axis=0) >= MIN_PAIRS
+        lw = {"F": np.zeros(len(counts)), "E": log_weights(folder, REFERENCE)}
+
+        def structure(idx, counts=counts, dip=dip, lw=lw, edges=edges, box=box, n=n):
+            return {
+                k: weighted_structure(counts[idx], dip[idx], w[idx], edges, box, n)
+                for k, w in lw.items()
+            }
+
+        full = structure(np.arange(len(counts)))
+        rng = np.random.default_rng(0)
+        boot = [structure(block_indices(len(counts), rng)) for _ in range(n_boot)]
+        reps = groups[kappa]
+        row = table[(table.kappa == kappa) & (table.label == PRODUCTION)].iloc[0]
+        panels = [
+            (0, "g(r)", lambda f: pd.read_csv(f / "rdf.csv"), 0),
+            (2, "mucorr", lambda f: pd.read_csv(f / "multipole_dist.csv"), 1),
+        ]
+        for top, col_name, load, k in panels:
+            xp, yp, sp = replica_mean_sem(reps, load, col_name)
+            ax, dax = axes[top, col], axes[top + 1, col]
+            # Orientation is undefined in the overlap bins, which hold almost no pairs
+            m = sampled if k == 1 else np.ones_like(sampled)
+            mp = xp / SIGMA >= x[m][0]
+            yF, yE = full["F"][k][m], full["E"][k][m]
+            ax.fill_between(
+                xp[mp] / SIGMA,
+                (yp - sp)[mp],
+                (yp + sp)[mp],
+                color="0.82",
+                lw=0,
+                label="production runs, ±SEM",
+            )
+            ax.plot(x[m], yF, color="C0", lw=1.2, label=r"Fanourgakis, $r_c = L/2$")
+            ax.plot(x[m][::2], yE[::2], "o", mfc="none", mec="C3", ms=3.5, label="Yukawa Ewald")
+            noise = np.std([b["E"][k][m] - b["F"][k][m] for b in boot], axis=0)
+            dax.fill_between(x[m], -noise, noise, color="C3", alpha=0.2, lw=0)
+            dax.plot(x[m], yE - yF, color="C3", lw=0.8)
+            dax.axhline(0, color="k", lw=0.6)
+        axes[0, col].set_title(rf"$\lambda_D$ = {1 / kappa:.1f} Å", fontsize=10)
+        axes[0, col].text(
+            0.97,
+            0.95,
+            rf"$\Delta G$ = {round(row.dG_over_sem, 2) + 0:+.2f} SEM",  # no "−0.00"
+            transform=axes[0, col].transAxes,
+            ha="right",
+            va="top",
+            fontsize=8,
+        )
+        axes[-1, col].set_xlabel(r"$r/\sigma$")
+    axes[0, 0].set_ylabel(r"$g(r)$")
+    axes[1, 0].set_ylabel(r"$\Delta g$")
+    axes[2, 0].set_ylabel(r"$\langle\hat{\mu}_i\cdot\hat{\mu}_j\rangle$")
+    axes[3, 0].set_ylabel(r"$\Delta\langle\hat{\mu}_i\cdot\hat{\mu}_j\rangle$")
+    axes[1, 0].set_ylim(-0.12, 0.12)
+    axes[3, 0].set_ylim(-0.12, 0.12)
+    axes[0, 0].set_xlim(0.9, 1.87)
+    axes[0, 0].legend(frameon=False, fontsize=7.5, loc="center right")
+    fig.savefig(out / "cutoff_esi.png", dpi=200)
+    fig.savefig(out / "cutoff_esi.pdf")
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -366,6 +449,7 @@ def main():
         print(table.drop(columns=["scheme"]).to_string(index=False, float_format="%.3g"))
         print(speed.to_string(index=False, float_format="%.3g"))
     plot(table, speed, args.out)
+    plot_esi(args.data, table, args.out)
 
 
 if __name__ == "__main__":
