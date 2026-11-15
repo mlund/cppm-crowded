@@ -36,6 +36,7 @@ data/                  Simulation results used in the manuscript
   implicit/<variant>/  Implicit-ion κ scans, 3 replicas per κ
   fluctuations/        Explicit-ion runs with per-step pressure and ion-count series
   geometry/            Isotropic implicit-ion runs with ion-excluded-sphere charge scaling
+  cutoff/              P18 implicit-ion frames replayed through Fanourgakis cutoffs and Yukawa Ewald
 figures/               Generated figures (output of make_figures.sh)
   schematics/          Model schematics and VMD renders (not regenerated)
 ```
@@ -75,6 +76,7 @@ reruns give byte-identical files.
 | `*-exp`, `sim_box`                         | Static, in `figures/schematics/` (VMD)        |
 | `sdfs`                                     | `plot_sdf_panel.py` on the VMD render `figures/schematics/sdfs.png` |
 | `sdf/<variant>-exp` (Mollweide, ESI; all four variants) | `plot_sdf_sphere.py` → `sdf/`     |
+| `cutoff_esi` (ESI), `cutoff_convergence`, `cutoff_ewald`, `cutoff_pressure`, `cutoff_speed` | `cutoff_convergence.py` → `cutoff/` |
 
 ### Sampling, salt fluctuations and the geometry test (ESI)
 
@@ -90,6 +92,40 @@ uv run analysis/autocorr.py data/fluctuations             # correlation times, b
 uv run analysis/salt_susceptibility.py data/fluctuations  # ⟨δN_s²⟩ and the Donnan ratio
 uv run analysis/finite_size_kb.py data                    # KB cutoff, tail correction, weights
 uv run analysis/geometry_test.py data                     # charge-scaled runs vs. explicit ions
+```
+
+### Electrostatic cutoff test (ESI)
+
+`data/cutoff/` tests whether the Fanourgakis cutoff of the implicit-ion runs,
+r_c = L/2 = 74.8 Å, reproduces Yukawa Ewald summation. For P18 at κ = 0.0264, 0.0526 and
+0.0950 Å⁻¹ (Debye lengths 38, 19 and 10.5 Å), a 1000-frame trajectory sampled with the
+production Hamiltonian is replayed (`faunus rerun`) through Fanourgakis at
+r_c = 15–74.8 Å and through Yukawa Ewald, then reweighted to each Hamiltonian. The
+reference is Ewald at r_c = 40 Å and ε = 10⁻⁶, checked against r_c = 30 Å and ε = 10⁻⁷.
+Shorter-cutoff, `optimize`, fitted-α, culled and splined settings are compared against
+that reference, both for structure and for time per MC step.
+
+Each `P18_<κ>/` folder holds:
+
+| File                     | Content                                                        |
+|--------------------------|----------------------------------------------------------------|
+| `frames.npz`             | Per-frame macroion centres and dipole vectors                  |
+| `traj/`                  | Input, output and energies of the sampling run                 |
+| `rerun/<setting>/`       | Input, per-frame energy (`energy.csv`) and virtual-volume ΔU (`pressure.csv`) |
+| `speed.csv`              | Wall time, k-vectors and α of 500-step MC runs per setting      |
+
+Ewald settings in `rerun/` and `speed.csv` are named `ewald_<r_c>_<ε>`;
+`ewaldopt`/`ewaldfit` mark `optimize` or a fixed α, and `cull`/`spline` mark group-pair
+culling or tabulated pair potentials.
+The Ewald runs used faunus-rs 9f8d06f. The Fanourgakis runs and trajectories used
+71ea95a, which gives identical Fanourgakis energies.
+
+To regenerate the inputs and run them on a host, then condense the results:
+
+```sh
+uv run simulation/cutoff_test/make_inputs.py      # writes data/runs/cutoff/ (git-ignored)
+simulation/cutoff_test/run.sh data/runs/cutoff <faunus> [jobs] [stages] [label-glob]
+uv run analysis/cutoff_convergence.py prepare data/runs/cutoff data/cutoff
 ```
 
 ### Choosing the implicit-ion Debye length
