@@ -1,0 +1,76 @@
+version:
+  faunus: 3.0.0-beta.3
+  git_revision: v3.0.0-beta.3-18-g71ea95a
+medium:
+  permittivity: Water
+  salt: null
+  temperature: 298.15
+blocks:
+- molecule: macroion
+  N: 30
+  active: null
+  insert: !GridCOM
+    rotate: true
+cell: !Cuboid
+- 149.64407707272974
+- 149.64407707272974
+- 149.64407707272974
+energy_change:
+  drift: 2.5295321393059567e-12
+  final: -132.3157223325418
+  initial: -94.18074337988699
+energy_timers:
+- nonbonded:
+    total: 100.0
+    energy: 0.01
+    update: 99.98
+propagate:
+  steps: 20000
+  seed: Hardware
+  collections:
+  - !Stochastic
+    cycles: 1
+    elapsed_seconds: 1540.451514886
+    moves:
+    - !TranslateMolecule
+      molecule: macroion
+      max_displacement: 4.0
+      directions: xyz
+      weight: 1.0
+      repeat: 30
+      statistics:
+        num_trials: 300540
+        num_accepted: 171652
+        mean_square_displacement:
+          mean: 2.14977476944347
+          samples: 300540
+        elapsed_seconds: 0.0
+        info: {}
+        energy_change_sum: 46.084148286607544
+        acceptance_ratio: 0.5711452718440141
+    - !RotateMolecule
+      molecule: macroion
+      max_angle: 0.4
+      weight: 1.0
+      repeat: 30
+      statistics:
+        num_trials: 299460
+        num_accepted: 202046
+        mean_square_displacement:
+          mean: 0.029692768738938686
+          samples: 299460
+        elapsed_seconds: 0.0
+        info: {}
+        energy_change_sum: -84.2191272392649
+        acceptance_ratio: 0.6747011286983237
+  criterion: MetropolisHastings
+analysis:
+- energy:
+    num_samples: 1000
+    mean: -118.56536772021596
+- structure_writer:
+    file: traj.xtc
+    num_samples: 1000
+- structure_writer:
+    file: traj.xyz
+    num_samples: 1000

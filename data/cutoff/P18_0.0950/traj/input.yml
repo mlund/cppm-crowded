@@ -1,0 +1,48 @@
+atoms:
+  - {name: MP, mass: 1.0e7,  charge:  0.0, sigma: 40.0, epsilon: 2.479}
+  - {name: NP, mass: 1.0e-3, charge: -1.0, sigma:  4.0, epsilon: 2.479}
+  - {name: PP, mass: 1.0e-3, charge:  1.0, sigma:  4.0, epsilon: 2.479}
+  - {name: UP, mass: 1.0e-3, charge:  0.0, sigma:  4.0, epsilon: 2.479}
+
+molecules:
+  - name: macroion
+    degrees_of_freedom: Rigid
+    has_com: true
+    from_structure: "../../P18.xyz"
+
+system:
+  cell: !Cuboid [149.64407707272974, 149.64407707272974, 149.64407707272974]
+  medium:
+    permittivity: !Water
+    temperature: 298.15
+  blocks:
+    - molecule: macroion
+      N: 30
+      insert: !GridCOM {rotate: true}
+  energy:
+    - !Nonbonded
+      default:
+        - !Fanourgakis {cutoff: 74.82203853636487, debye_length: 10.526315789473685}
+        - !WeeksChandlerAndersen {mixing: LB}
+
+analysis:
+  - !Energy
+    file: energy.csv
+    frequency: !Every 20
+  - !Trajectory
+    file: traj.xtc
+    frequency: !Every 20
+    save_frame_state: true
+  - !Trajectory
+    file: traj.xyz
+    frequency: !Every 20
+
+propagate:
+  seed: !Hardware
+  criterion: Metropolis
+  steps: 20000
+  collections:
+    - !Stochastic
+      moves:
+        - !TranslateMolecule {molecule: macroion, dp: 4.0, repeat: 30}
+        - !RotateMolecule    {molecule: macroion, dprot: 0.4,  repeat: 30}

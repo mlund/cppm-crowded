@@ -1,0 +1,29 @@
+medium:
+  permittivity: Water
+  salt:
+  - NaCl
+  - 0.025556828357
+  temperature: 298.15
+rerun:
+  frames: 1000.0
+  last_frame_energy: -255.44090515921764
+analysis:
+- energy:
+    num_samples: 1000
+    mean: -277.20185832349034
+- virtual_volume_move:
+    volume_displacement: 0.1
+    method: Isotropic
+    block_size: 50
+    num_samples: 1000
+    num_perturbations: 1000
+    mean_free_energy: -5.777467459999741e-6
+    Pex/kT/Å³:
+      mean: 0.00005777467459999741
+      error: 1.5631459114673459e-6
+    Pex/Pa:
+      mean: 237823.95901688372
+      error: 6434.541635414697
+    Pex/mM:
+      mean: 95.93710426655223
+      error: 2.5956648536845988

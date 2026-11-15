@@ -37,3 +37,6 @@ done
 # Neutral surface groups carry no charge, so only the ions are mapped
 py analysis/plot_sdf_sphere.py "$DATA/explicit/neutral-exp/sdf-cl.dx" "$DATA/explicit/neutral-exp/sdf-na.dx" \
     --projection mollweide --mode shell --r-ref 23 --cmap RdBu_r --vcenter 1.0 -o "$OUT/sdf/neutral-exp.png"
+
+# Cutoff test (ESI): Fanourgakis cutoffs vs Yukawa Ewald, reweighted from production frames
+py analysis/cutoff_convergence.py plot "$DATA" "$OUT/cutoff"
