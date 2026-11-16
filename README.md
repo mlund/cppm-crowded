@@ -117,8 +117,9 @@ Each `P18_<κ>/` folder holds:
 Ewald settings in `rerun/` and `speed.csv` are named `ewald_<r_c>_<ε>`;
 `ewaldopt`/`ewaldfit` mark `optimize` or a fixed α, and `cull`/`spline` mark group-pair
 culling or tabulated pair potentials.
-The Ewald runs used faunus-rs 9f8d06f. The Fanourgakis runs and trajectories used
-71ea95a, which gives identical Fanourgakis energies.
+The trajectories and Fanourgakis energies used faunus-rs 71ea95a. The Ewald energies and
+all virtual-volume ΔU used 9f8d06f, which gives identical Fanourgakis energies. ΔU is for a
+compression of 10 Å³: the f32 k-vectors in Ewald blur smaller steps.
 
 To regenerate the inputs and run them on a host, then condense the results:
 

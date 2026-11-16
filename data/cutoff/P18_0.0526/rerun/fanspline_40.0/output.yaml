@@ -12,18 +12,18 @@ analysis:
     num_samples: 1000
     mean: -337.68770604450594
 - virtual_volume_move:
-    volume_displacement: 0.1
+    volume_displacement: -10.0
     method: Isotropic
     block_size: 50
     num_samples: 1000
     num_perturbations: 1000
-    mean_free_energy: -4.075328556396585e-6
+    mean_free_energy: 0.00040753743876909
     Pex/kT/Å³:
-      mean: 0.000040753285563965846
-      error: 1.6067125181616432e-6
+      mean: 0.000040753743876909
+      error: 1.6066976115356792e-6
     Pex/Pa:
-      mean: 167757.0281939486
-      error: 6613.879432757649
+      mean: 167758.91479563634
+      error: 6613.8180710480965
     Pex/mM:
-      mean: 67.67242279465724
-      error: 2.6680089061246774
+      mean: 67.67318384120433
+      error: 2.6679841530899044

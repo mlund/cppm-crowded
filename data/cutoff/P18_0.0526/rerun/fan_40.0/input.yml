@@ -30,8 +30,10 @@ analysis:
   - !Energy
     file: energy.csv
     frequency: !Every 1
+  # Compression by 10 Å³: f32 k-vectors blur smaller steps, and an expansion adds a
+  # k-shell in fixed-α Ewald (mlund/coulomb#9)
   - !VirtualVolumeMove
-    volume_displacement: 0.1
+    volume_displacement: -10
     method: Isotropic
     block_size: 50
     file: pressure.csv

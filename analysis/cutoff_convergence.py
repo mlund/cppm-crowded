@@ -124,7 +124,9 @@ def energies(folder, label):
 
 
 def pressure_du(folder, label):
-    return pd.read_csv(folder / f"rerun/{label}/pressure.csv")["dU/kT"].to_numpy()
+    """Per-frame βΔU and the volume step dV of the virtual-volume move."""
+    d = pd.read_csv(folder / f"rerun/{label}/pressure.csv")
+    return d["dU/kT"].to_numpy(), d["dV/Å³"].iloc[0]
 
 
 def log_weights(folder, label):
@@ -188,9 +190,9 @@ def analyse_kappa(folder, implicit_dir, n_boot=200):
         out = {}
         for lab in labels:
             g, mu = weighted_structure(counts[idx], dip[idx], logw[lab][idx], edges, box, n)
-            du_v = pressure_du(folder, lab)[idx]
+            du_v, dV = pressure_du(folder, lab)
+            du_v = du_v[idx]
             lw = logw[lab][idx]
-            dV = 0.1
             p = np.log(np.sum(np.exp(lw - lw.max() - du_v)) / np.sum(np.exp(lw - lw.max()))) / dV
             out[lab] = {"g": g, "mu": mu, "G": kb_integral(r, g, half) / V_SIGMA, "P": p}
         return out
